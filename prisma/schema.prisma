@@ -1,0 +1,511 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// User model
+model User {
+  id                     String         @id @default(cuid())
+  email                  String         @unique
+  name                   String
+  password               String
+  phone                  String
+  role                   Role           @default(STORE_OWNER)
+  isActive               Boolean        @default(true)
+  isEmailVerified        Boolean        @default(false)
+  emailVerificationToken String?
+  emailVerificationExpire DateTime?
+  resetPasswordToken     String?
+  resetPasswordExpire    DateTime?
+  lastLogin              DateTime?
+  trialStartDate         DateTime       @default(now())
+  trialEndDate           DateTime       @default(dbgenerated("NOW() + INTERVAL '14 days'"))
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+
+  // Relations
+  store                  Store?
+  subscription           Subscription?
+  chats                  Chat[]         @relation("UserChats")
+
+  @@index([email])
+}
+
+// Store model
+model Store {
+  id            String    @id @default(cuid())
+  ownerId       String    @unique
+  owner         User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Basic info
+  name          String
+  description   String?
+  logo          String?
+  banner        String?
+  subdomain     String    @unique
+  customDomain  String?   @unique
+
+  // Contact
+  whatsappNumber String
+  email         String?
+
+  // Address
+  street        String?
+  city          String?
+  state         String?
+  country       String?
+  postalCode    String?
+
+  // Social Media
+  facebook      String?
+  instagram     String?
+  twitter       String?
+  youtube       String?
+
+  // Settings
+  currency      Currency  @default(IDR)
+  primaryColor  String    @default("#007bff")
+  secondaryColor String   @default("#6c757d")
+  fontFamily    String    @default("Inter")
+  layout        Layout    @default(GRID)
+
+  // Limits & Usage
+  storageUsed   BigInt    @default(0)
+  storageLimit  BigInt    @default(104857600) // 100MB in bytes
+  productLimit  Int       @default(50)
+  monthlyVisits Int       @default(0)
+
+  // Status
+  isActive      Boolean   @default(true)
+  isVerified    Boolean   @default(false)
+
+  // Analytics
+  rating        Float     @default(0)
+  totalReviews  Int       @default(0)
+  totalSales    Int       @default(0)
+  totalRevenue  Decimal   @default(0) @db.Decimal(15, 2)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  products      Product[]
+  orders        Order[]
+  chats         Chat[]
+  subscription  Subscription?
+
+  @@index([subdomain])
+  @@index([customDomain])
+}
+
+// Product model
+model Product {
+  id            String    @id @default(cuid())
+  storeId       String
+  store         Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  // Basic info
+  name          String
+  description   String
+  category      Category
+  subCategory   String?
+
+  // Pricing
+  price         Decimal   @db.Decimal(15, 2)
+  comparePrice  Decimal?  @db.Decimal(15, 2)
+  cost          Decimal   @default(0) @db.Decimal(15, 2)
+  profit        Decimal   @default(0) @db.Decimal(15, 2)
+  profitMargin  Float     @default(0)
+
+  // Inventory
+  sku           String?   @unique
+  barcode       String?
+  stock         Int       @default(0)
+  trackInventory Boolean  @default(true)
+  lowStockAlert Int       @default(5)
+
+  // Physical attributes
+  weight        Float?
+  weightUnit    WeightUnit @default(KG)
+  length        Float?
+  width         Float?
+  height        Float?
+  dimensionUnit DimensionUnit @default(CM)
+
+  // SEO
+  slug          String
+  metaTitle     String?
+  metaDescription String?
+
+  // Status
+  visibility    Visibility @default(VISIBLE)
+  publishDate   DateTime   @default(now())
+  featured      Boolean    @default(false)
+  isActive      Boolean    @default(true)
+
+  // Analytics
+  views         Int        @default(0)
+  sold          Int        @default(0)
+  ratingAverage Float      @default(0)
+  ratingCount   Int        @default(0)
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Relations
+  images        ProductImage[]
+  videos        ProductVideo[]
+  orderItems    OrderItem[]
+  tags          ProductTag[]
+
+  @@unique([storeId, slug])
+  @@index([storeId, isActive])
+  @@index([category])
+}
+
+// Product Image model
+model ProductImage {
+  id          String    @id @default(cuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url         String
+  alt         String?
+  isPrimary   Boolean   @default(false)
+  source      ImageSource @default(UPLOAD)
+  createdAt   DateTime  @default(now())
+}
+
+// Product Video model
+model ProductVideo {
+  id          String    @id @default(cuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url         String
+  title       String?
+  source      VideoSource @default(YOUTUBE)
+  thumbnail   String?
+  createdAt   DateTime  @default(now())
+}
+
+// Product Tag model
+model ProductTag {
+  id          String    @id @default(cuid())
+  name        String
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, name])
+}
+
+// Order model
+model Order {
+  id            String    @id @default(cuid())
+  storeId       String
+  store         Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderNumber   String    @unique @default(cuid())
+
+  // Customer info
+  customerName  String
+  customerEmail String?
+  customerPhone String
+  customerWhatsapp String?
+
+  // Shipping address
+  shippingStreet String?
+  shippingCity   String?
+  shippingState  String?
+  shippingCountry String?
+  shippingPostalCode String?
+  shippingNotes  String?
+
+  // Pricing
+  subtotal      Decimal   @db.Decimal(15, 2)
+  shipping      Decimal   @default(0) @db.Decimal(15, 2)
+  tax           Decimal   @default(0) @db.Decimal(15, 2)
+  discount      Decimal   @default(0) @db.Decimal(15, 2)
+  total         Decimal   @db.Decimal(15, 2)
+  totalCost     Decimal   @default(0) @db.Decimal(15, 2)
+  totalProfit   Decimal   @default(0) @db.Decimal(15, 2)
+
+  // Payment
+  paymentMethod PaymentMethod @default(WHATSAPP)
+  paymentStatus PaymentStatus @default(PENDING)
+  transactionId String?
+  paidAt        DateTime?
+
+  // Status
+  status        OrderStatus @default(PENDING)
+  notes         String?
+  source        OrderSource @default(WEBSITE)
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Relations
+  items         OrderItem[]
+
+  @@index([storeId, status])
+  @@index([orderNumber])
+}
+
+// Order Item model
+model OrderItem {
+  id          String    @id @default(cuid())
+  orderId     String
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id])
+
+  name        String
+  price       Decimal   @db.Decimal(15, 2)
+  cost        Decimal   @default(0) @db.Decimal(15, 2)
+  quantity    Int
+  subtotal    Decimal   @db.Decimal(15, 2)
+  profit      Decimal   @default(0) @db.Decimal(15, 2)
+
+  variant     String?
+  createdAt   DateTime  @default(now())
+}
+
+// Subscription model
+model Subscription {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storeId       String    @unique
+  store         Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  plan          SubscriptionPlan @default(FREE)
+  status        SubscriptionStatus @default(TRIAL)
+
+  // Features based on plan
+  productLimit  Int       @default(10)
+  storageLimit  BigInt    @default(104857600) // 100MB
+  customDomain  Boolean   @default(false)
+  aiLandingPage Boolean   @default(false)
+  advancedAnalytics Boolean @default(false)
+  prioritySupport Boolean  @default(false)
+  removeWatermark Boolean  @default(false)
+  multipleStores Int      @default(1)
+  teamMembers   Int       @default(1)
+  apiAccess     Boolean   @default(false)
+
+  // Billing
+  billingCycle  BillingCycle @default(MONTHLY)
+  price         Decimal   @default(0) @db.Decimal(15, 2)
+  currency      Currency  @default(IDR)
+
+  // Dates
+  trialStartDate DateTime @default(now())
+  trialEndDate  DateTime  @default(dbgenerated("NOW() + INTERVAL '14 days'"))
+  startDate     DateTime?
+  endDate       DateTime?
+  nextBillingDate DateTime?
+  lastPaymentDate DateTime?
+
+  // Payment
+  stripeCustomerId String?
+  stripeSubscriptionId String?
+  autoRenew     Boolean   @default(true)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Chat model
+model Chat {
+  id            String    @id @default(cuid())
+  storeId       String
+  store         Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  // Participants
+  userId        String?
+  user          User?     @relation("UserChats", fields: [userId], references: [id])
+  customerName  String?
+  customerPhone String?
+  customerEmail String?
+
+  // Status
+  status        ChatStatus @default(ACTIVE)
+  priority      Priority   @default(MEDIUM)
+
+  // Metadata
+  lastMessage   String?
+  lastMessageAt DateTime?
+  unreadCount   Int       @default(0)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  messages      ChatMessage[]
+
+  @@index([storeId, status])
+}
+
+// Chat Message model
+model ChatMessage {
+  id          String    @id @default(cuid())
+  chatId      String
+  chat        Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  senderType  SenderType
+  senderName  String?
+  message     String
+
+  isRead      Boolean   @default(false)
+  readAt      DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// ENUMS
+enum Role {
+  ADMIN
+  STORE_OWNER
+  CUSTOMER
+}
+
+enum Currency {
+  IDR
+  USD
+  EUR
+  MYR
+  SGD
+}
+
+enum Layout {
+  GRID
+  LIST
+}
+
+enum Category {
+  ELECTRONICS
+  FASHION
+  FOOD_BEVERAGES
+  HEALTH_BEAUTY
+  HOME_LIVING
+  BOOKS_STATIONERY
+  SPORTS_OUTDOORS
+  TOYS_GAMES
+  AUTOMOTIVE
+  SERVICES
+  DIGITAL_PRODUCTS
+  OTHER
+}
+
+enum WeightUnit {
+  G
+  KG
+  LB
+  OZ
+}
+
+enum DimensionUnit {
+  CM
+  M
+  IN
+  FT
+}
+
+enum Visibility {
+  VISIBLE
+  HIDDEN
+  SCHEDULED
+}
+
+enum ImageSource {
+  UPLOAD
+  DRIVE
+  EXTERNAL
+}
+
+enum VideoSource {
+  YOUTUBE
+  VIMEO
+  UPLOAD
+}
+
+enum PaymentMethod {
+  WHATSAPP
+  BANK_TRANSFER
+  COD
+  STRIPE
+  PAYPAL
+  MIDTRANS
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum OrderSource {
+  WEBSITE
+  WHATSAPP
+  INSTAGRAM
+  FACEBOOK
+  MANUAL
+}
+
+enum SubscriptionPlan {
+  FREE
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  INACTIVE
+  CANCELLED
+  EXPIRED
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+  LIFETIME
+}
+
+enum ChatStatus {
+  ACTIVE
+  RESOLVED
+  ARCHIVED
+  BLOCKED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum SenderType {
+  CUSTOMER
+  STORE_OWNER
+  ADMIN
+  SYSTEM
+}
