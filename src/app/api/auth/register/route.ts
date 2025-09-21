@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Update user with store reference
-    user.store = store._id;
+    user.store = store._id as any;
     await user.save();
 
     // Generate JWT token

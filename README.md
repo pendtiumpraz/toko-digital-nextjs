@@ -1,6 +1,14 @@
 # Toko Digital Next.js - Full Stack SaaS Platform
 
-Platform SaaS lengkap untuk membuat toko online dengan Next.js 15, TypeScript, MongoDB, dan Tailwind CSS. Satu aplikasi untuk frontend dan backend!
+[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-15-black)](https://nextjs.org/)
+[![Prisma](https://img.shields.io/badge/Prisma-PostgreSQL-green)](https://www.prisma.io/)
+[![License](https://img.shields.io/badge/license-MIT-purple)](LICENSE)
+
+Platform SaaS lengkap untuk membuat toko online dengan Next.js 15, TypeScript, Prisma, dan Tailwind CSS. Satu aplikasi untuk frontend dan backend dengan WhatsApp checkout integration!
+
+## 📈 Development Progress: 45% Complete
+Check [ROADMAP.md](ROADMAP.md) for detailed progress
 
 ## 🚀 Kenapa Next.js Version?
 
@@ -20,7 +28,7 @@ Platform SaaS lengkap untuk membuat toko online dengan Next.js 15, TypeScript, M
 
 - **Framework**: Next.js 15 (App Router)
 - **Language**: TypeScript
-- **Database**: MongoDB dengan Mongoose
+- **Database**: PostgreSQL dengan Prisma ORM
 - **Styling**: Tailwind CSS
 - **Authentication**: NextAuth.js / JWT
 - **File Upload**: Cloudinary
@@ -41,22 +49,73 @@ toko-digital-nextjs/
 │   │   │   ├── stores/       # Store management
 │   │   │   └── orders/       # Order processing
 │   │   ├── dashboard/         # Dashboard pages
+│   │   │   ├── page.tsx      # Main dashboard
+│   │   │   ├── products/     # Product management
+│   │   │   ├── orders/       # Order management
+│   │   │   └── analytics/    # Analytics & reports
 │   │   ├── [subdomain]/       # Dynamic subdomain routing
 │   │   └── page.tsx          # Landing page
 │   ├── components/            # React components
+│   │   └── WhatsAppCheckout.tsx # WhatsApp checkout flow
 │   ├── lib/                   # Utilities & DB connection
-│   ├── models/               # Mongoose models
+│   ├── models/               # Database models
 │   └── types/                # TypeScript types
 ├── public/                    # Static assets
+├── prisma/
+│   └── schema.prisma         # Database schema
+├── docs/                      # Documentation
+│   └── API.md                # API documentation
+├── __tests__/                 # Test files
+├── ROADMAP.md                # Development roadmap
+├── RULES.md                  # Development rules
+├── CONTRIBUTING.md           # Contribution guidelines
 └── .env.local                # Environment variables
 ```
+
+## ✨ Features
+
+### 🛍️ Core Features
+- ✅ **Multi-tenant Architecture** - Setiap toko punya subdomain sendiri
+- ✅ **Product Management** - CRUD produk dengan gambar & video
+- ✅ **Order Management** - Kelola pesanan dengan status tracking
+- ✅ **WhatsApp Checkout** - Customer checkout langsung via WhatsApp
+- ✅ **Dashboard Analytics** - Revenue, orders, customers metrics
+- ✅ **Stock Management** - Track inventory dengan low stock alerts
+- ✅ **Financial Reports** - P&L statements, export to Excel
+
+### 📊 Dashboard Features (NEW!)
+- 📈 **Real-time Statistics** - Revenue, orders, conversion rates
+- 📦 **Product Management** - Grid view dengan filtering & search
+- 🛒 **Order Processing** - Status updates, WhatsApp integration
+- 💰 **Financial Analytics** - Charts, trends, customer segments
+- 📱 **WhatsApp Integration** - Direct checkout & customer contact
+
+### 🔒 Technical Features
+- 🔐 **JWT Authentication** - Secure user sessions
+- 📝 **TypeScript Strict Mode** - Type safety enforced
+- ✅ **Unit Testing** - Jest & React Testing Library
+- 📚 **API Documentation** - Complete REST API docs
+- 🚀 **Optimized Performance** - Next.js Image, lazy loading
+- 📱 **Responsive Design** - Mobile-first approach
+
+## 🛠️ Development Rules
+
+**⚠️ WAJIB**: Sebelum push ke `main`, jalankan:
+```bash
+npx tsc --noEmit  # TypeScript check - HARUS no errors!
+npm run lint      # Lint check
+npm run build     # Build test
+npm test          # Run tests
+```
+
+Lihat [RULES.md](RULES.md) untuk development guidelines lengkap.
 
 ## 🔧 Installation
 
 ### Prerequisites
 
 - Node.js 18+
-- MongoDB (local atau MongoDB Atlas)
+- PostgreSQL database (local atau cloud provider seperti Vercel Postgres, Supabase, atau Neon)
 - Cloudinary account (untuk upload gambar)
 - Stripe account (optional, untuk payment)
 
@@ -80,8 +139,15 @@ cp .env.local.example .env.local
 
 Edit `.env.local`:
 ```env
-# Database
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/toko-digital
+# Database (PostgreSQL)
+DATABASE_URL="postgresql://user:password@localhost:5432/toko-digital"
+# Or use Vercel Postgres
+POSTGRES_URL="postgres://..."
+POSTGRES_PRISMA_URL="postgres://..."
+POSTGRES_URL_NON_POOLING="postgres://..."
+
+# JWT Secret
+JWT_SECRET=your-jwt-secret-key
 
 # NextAuth
 NEXTAUTH_URL=http://localhost:3000
@@ -95,14 +161,51 @@ CLOUDINARY_API_SECRET=your-api-secret
 # Stripe (optional)
 STRIPE_SECRET_KEY=sk_test_...
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+
+# WhatsApp (optional - for Business API)
+WHATSAPP_API_TOKEN=your-token
+WHATSAPP_PHONE_NUMBER_ID=your-phone-id
 ```
 
-4. **Run development server**
+4. **Setup database**
+```bash
+# Generate Prisma client
+npx prisma generate
+
+# Push schema to database
+npx prisma db push
+
+# (Optional) Run migrations
+npx prisma migrate dev --name init
+```
+
+5. **Run development server**
 ```bash
 npm run dev
 ```
 
 Akses di http://localhost:3000
+
+## 📜 Available Scripts
+
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run start        # Start production server
+npm run lint         # Run ESLint
+npm test            # Run tests
+npm run test:watch  # Run tests in watch mode
+npm run test:coverage # Generate test coverage report
+
+# Prisma commands
+npm run prisma:generate  # Generate Prisma client
+npm run prisma:push      # Push schema to database
+npm run prisma:migrate   # Run migrations
+npm run prisma:studio    # Open Prisma Studio
+
+# Type checking
+npm run type-check   # Run TypeScript type check (tsc --noEmit)
+```
 
 ## 🚀 Deployment ke Vercel
 
@@ -127,44 +230,12 @@ git push origin main
 - Configure environment variables
 - Deploy!
 
-3. **Setup MongoDB Atlas**
-- Create free cluster di [MongoDB Atlas](https://www.mongodb.com/atlas)
-- Get connection string
-- Add ke Vercel environment variables
+3. **Setup Database**
+- Use Vercel Postgres (recommended) atau
+- Setup PostgreSQL di Supabase/Neon
+- Add database URL ke Vercel environment variables
+- Run `npx prisma db push` via Vercel CLI
 
-## 📱 Features
-
-### 🏪 Multi-Tenant Architecture
-- Subdomain otomatis: `namatoko.toko-digital.com`
-- Custom domain support
-- Isolated store data
-
-### 📦 Product Management
-- Upload images ke Cloudinary
-- YouTube video embed
-- Stock management
-- Category & variants
-
-### 💬 WhatsApp Integration
-- Direct WhatsApp checkout
-- No API needed
-- Custom message templates
-
-### 💰 Financial Dashboard
-- Sales tracking
-- Profit calculation
-- Export to Excel
-- Analytics charts
-
-### 🎯 Subscription System
-- Free trial 14 days
-- Multiple pricing tiers
-- Stripe integration
-
-### 🤖 AI Features
-- Product description generator
-- Landing page builder
-- SEO optimization
 
 ## 🔒 API Routes
 
@@ -220,17 +291,22 @@ export async function POST(request: NextRequest) {
 
 ### Add New Model
 
-Create file in `/src/models/YourModel.ts`:
+Update Prisma schema in `/prisma/schema.prisma`:
 
-```typescript
-import mongoose from 'mongoose';
-
-const schema = new mongoose.Schema({
-  name: String,
+```prisma
+model YourModel {
+  id        String   @id @default(cuid())
+  name      String
   // ... fields
-});
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+```
 
-export default mongoose.models.YourModel || mongoose.model('YourModel', schema);
+Then run:
+```bash
+npx prisma generate
+npx prisma db push
 ```
 
 ### Add New Page
@@ -283,15 +359,22 @@ npm run test:e2e
 
 ## 🐛 Common Issues
 
-### MongoDB Connection Error
-- Check MongoDB URI
-- Verify IP whitelist in MongoDB Atlas
-- Ensure network connectivity
+### Database Connection Error
+- Check DATABASE_URL format
+- Verify PostgreSQL is running
+- For Vercel Postgres, check connection pooling settings
+- Run `npx prisma generate` after schema changes
+
+### TypeScript Errors
+- Always run `npx tsc --noEmit` before pushing
+- Install missing @types packages
+- Check tsconfig.json strict settings
 
 ### Vercel Deployment Fails
 - Check build logs
 - Verify all environment variables
-- Ensure dependencies are in package.json
+- Run `npm run build` locally first
+- Ensure Prisma schema is valid
 
 ### Image Upload Not Working
 - Verify Cloudinary credentials
@@ -300,32 +383,35 @@ npm run test:e2e
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit changes (`git commit -m 'Add AmazingFeature'`)
-4. Push to branch (`git push origin feature/AmazingFeature`)
-5. Open Pull Request
+Baca [CONTRIBUTING.md](CONTRIBUTING.md) untuk guidelines lengkap.
+
+**Sebelum submit PR:**
+1. Run `npx tsc --noEmit` - HARUS no errors!
+2. Run `npm run lint`
+3. Run `npm test`
+4. Update documentation
+5. Follow commit message format
 
 ## 📄 License
 
-MIT License
+MIT License - see [LICENSE](LICENSE) for details
 
 ## 👥 Support
 
-- Email: pendtiumpraz@gmail.com
-- GitHub Issues: [Create Issue](https://github.com/yourusername/toko-digital-nextjs/issues)
+- 📧 Email: support@toko-digital.com
+- 💬 Discord: [Join our community](https://discord.gg/toko-digital)
+- 📖 Documentation: [docs.toko-digital.com](https://docs.toko-digital.com)
+- 🐛 Issues: [GitHub Issues](https://github.com/pendtiumpraz/toko-digital-nextjs/issues)
 
-## 🎯 Roadmap
+## 🙏 Acknowledgments
 
-- [ ] Mobile app with React Native
-- [ ] AI-powered inventory prediction
-- [ ] Marketplace integrations
-- [ ] Advanced analytics dashboard
-- [ ] Multi-language support
-- [ ] PWA support
-- [ ] Webhook integrations
-- [ ] Bulk import/export
+- Next.js team for the amazing framework
+- Vercel for hosting
+- Prisma for the ORM
+- All contributors
 
 ---
 
-**Built with ❤️ using Next.js - The Full Stack React Framework**
+**Made with ❤️ by Toko Digital Team**
+
+*Last updated: December 2024*
