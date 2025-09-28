@@ -175,7 +175,7 @@ export function formatPrice(price: number, currency: string = 'IDR'): string {
 /**
  * Generate custom WhatsApp message from template
  */
-export function generateCustomMessage(template: string, variables: Record<string, any>): string {
+export function generateCustomMessage(template: string, variables: Record<string, unknown>): string {
   let message = template
 
   // Replace variables in the format {{variable}}

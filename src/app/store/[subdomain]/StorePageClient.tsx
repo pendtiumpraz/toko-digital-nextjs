@@ -31,10 +31,15 @@ interface Product {
   id: string
   name: string
   description: string
-  price: any // Handle Decimal, number, and string types from Prisma
+  price: number | string // Handle Decimal, number, and string types from Prisma
   stock: number
   slug: string
-  images?: any[] | string
+  images?: ProductImage[] | string
+}
+
+interface ProductImage {
+  url?: string
+  src?: string
 }
 
 interface StorePageClientProps {
@@ -63,7 +68,7 @@ export default function StorePageClient({ store, subdomain }: StorePageClientPro
       }
       // If images is an object array with url property
       if (Array.isArray(product.images) && product.images[0] && typeof product.images[0] === 'object') {
-        return (product.images[0] as any).url || (product.images[0] as any).src;
+        return (product.images[0] as ProductImage).url || (product.images[0] as ProductImage).src;
       }
       // If images is a single string
       if (typeof product.images === 'string') {

@@ -1,57 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import Product from '@/models/Product';
-import Store from '@/models/Store';
+import { prisma } from '@/lib/prisma';
+import { Category } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {
-    await connectDB();
-
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
     const category = searchParams.get('category');
     const featured = searchParams.get('featured');
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const limit = parseInt(searchParams.get('limit') || '10');
     const page = parseInt(searchParams.get('page') || '1');
 
-    const query: any = { isActive: true };
+    // Use any for Prisma where clause to avoid complex type issues
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: any = { isActive: true };
 
     if (storeId) {
-      query.store = storeId;
+      where.storeId = storeId;
     }
 
     if (category) {
-      query.category = category;
+      where.category = category as Category;
     }
 
-    if (featured === 'true') {
-      query.featured = true;
-    }
-
-    const skip = (page - 1) * limit;
-
-    const products = await Product.find(query)
-      .populate('store', 'name subdomain')
-      .sort('-createdAt')
-      .limit(limit)
-      .skip(skip);
-
-    const total = await Product.countDocuments(query);
-
-    return NextResponse.json({
-      success: true,
-      data: products,
-      pagination: {
-        total,
-        page,
-        pages: Math.ceil(total / limit),
-        limit
+    const products = await prisma.product.findMany({
+      where,
+      include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            subdomain: true
+          }
+        },
+        images: true
+      },
+      take: limit,
+      skip: (page - 1) * limit,
+      orderBy: {
+        createdAt: 'desc'
       }
     });
-  } catch (error: any) {
-    console.error('Get products error:', error);
+
+    // Convert Decimal types to numbers
+    const serializedProducts = products.map(product => ({
+      ...product,
+      price: product.price.toNumber(),
+      comparePrice: product.comparePrice ? product.comparePrice.toNumber() : null,
+      cost: product.cost.toNumber(),
+      profit: product.profit.toNumber()
+    }));
+
+    return NextResponse.json({
+      products: serializedProducts,
+      page,
+      limit,
+      total: await prisma.product.count({ where })
+    });
+  } catch (error: unknown) {
+    console.error('Error fetching products:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch products' },
+      { error: 'Failed to fetch products' },
       { status: 500 }
     );
   }
@@ -59,13 +68,21 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await connectDB();
-
     const body = await request.json();
-    const { storeId, ...productData } = body;
+    const { storeId, name, description, category, price, images = [], stock = 0 } = body;
+
+    if (!storeId || !name || !price) {
+      return NextResponse.json(
+        { error: 'Store ID, name, and price are required' },
+        { status: 400 }
+      );
+    }
 
     // Verify store exists
-    const store = await Store.findById(storeId);
+    const store = await prisma.store.findUnique({
+      where: { id: storeId }
+    });
+
     if (!store) {
       return NextResponse.json(
         { error: 'Store not found' },
@@ -73,29 +90,116 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check product limit
-    const productCount = await Product.countDocuments({ store: storeId });
-    if (productCount >= store.productLimit) {
+    // Generate slug from name
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+    const product = await prisma.product.create({
+      data: {
+        storeId,
+        name,
+        slug,
+        description: description || '',
+        category: category || 'UMUM',
+        price,
+        stock,
+        isActive: true
+      },
+      include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            subdomain: true
+          }
+        }
+      }
+    });
+
+    // Convert Decimal types to numbers
+    const serializedProduct = {
+      ...product,
+      price: product.price.toNumber(),
+      comparePrice: product.comparePrice ? product.comparePrice.toNumber() : null,
+      cost: product.cost.toNumber(),
+      profit: product.profit.toNumber()
+    };
+
+    return NextResponse.json(serializedProduct, { status: 201 });
+  } catch (error: unknown) {
+    console.error('Error creating product:', error);
+    return NextResponse.json(
+      { error: 'Failed to create product' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { id, ...updateData } = body;
+
+    if (!id) {
       return NextResponse.json(
-        { error: `Product limit reached. Maximum ${store.productLimit} products allowed for your plan.` },
-        { status: 403 }
+        { error: 'Product ID is required' },
+        { status: 400 }
       );
     }
 
-    // Create product
-    const product = await Product.create({
-      ...productData,
-      store: storeId
+    const product = await prisma.product.update({
+      where: { id },
+      data: updateData,
+      include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            subdomain: true
+          }
+        }
+      }
     });
 
-    return NextResponse.json({
-      success: true,
-      data: product
-    }, { status: 201 });
-  } catch (error: any) {
-    console.error('Create product error:', error);
+    // Convert Decimal types to numbers
+    const serializedProduct = {
+      ...product,
+      price: product.price.toNumber(),
+      comparePrice: product.comparePrice ? product.comparePrice.toNumber() : null,
+      cost: product.cost.toNumber(),
+      profit: product.profit.toNumber()
+    };
+
+    return NextResponse.json(serializedProduct);
+  } catch (error: unknown) {
+    console.error('Error updating product:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to create product' },
+      { error: 'Failed to update product' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Product ID is required' },
+        { status: 400 }
+      );
+    }
+
+    await prisma.product.delete({
+      where: { id }
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    console.error('Error deleting product:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete product' },
       { status: 500 }
     );
   }

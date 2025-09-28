@@ -1,6 +1,17 @@
+import React from 'react'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { jest } from '@jest/globals'
 import axios from 'axios'
+
+interface Product {
+  name: string
+  price: number
+}
+
+interface Order {
+  orderNumber: string
+  total: number
+}
 
 // Mock axios
 jest.mock('axios')
@@ -16,9 +27,11 @@ jest.mock('next/navigation', () => ({
 }))
 
 jest.mock('next/link', () => {
-  return ({ children, href }: { children: React.ReactNode; href: string }) => (
+  const MockLink = ({ children, href }: { children: React.ReactNode; href: string }) => (
     <a href={href}>{children}</a>
   )
+  MockLink.displayName = 'MockLink'
+  return MockLink
 })
 
 // Mock Chart.js
@@ -37,8 +50,8 @@ const MockDashboard = () => {
     trialDaysLeft: 14
   })
 
-  const [products, setProducts] = React.useState([])
-  const [orders, setOrders] = React.useState([])
+  const [products, setProducts] = React.useState<Product[]>([])
+  const [orders, setOrders] = React.useState<Order[]>([])
   const [loading, setLoading] = React.useState(true)
 
   React.useEffect(() => {
@@ -115,7 +128,7 @@ const MockDashboard = () => {
           <h3>Recent Products</h3>
           {products.length > 0 ? (
             <ul>
-              {products.map((product: any, index) => (
+              {products.map((product: Product, index) => (
                 <li key={index} data-testid={`product-${index}`}>
                   {product.name} - Rp {product.price.toLocaleString('id-ID')}
                 </li>
@@ -130,7 +143,7 @@ const MockDashboard = () => {
           <h3>Recent Orders</h3>
           {orders.length > 0 ? (
             <ul>
-              {orders.map((order: any, index) => (
+              {orders.map((order: Order, index) => (
                 <li key={index} data-testid={`order-${index}`}>
                   {order.orderNumber} - Rp {order.total.toLocaleString('id-ID')}
                 </li>
@@ -151,7 +164,8 @@ const MockDashboard = () => {
   )
 }
 
-import React from 'react'
+// Add display name
+MockDashboard.displayName = 'MockDashboard'
 
 describe('Dashboard Page', () => {
   beforeEach(() => {

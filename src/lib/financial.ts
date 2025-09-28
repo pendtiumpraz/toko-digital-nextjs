@@ -1,6 +1,32 @@
 import { prisma, serializeBigInt } from './prisma'
 import { TransactionType, TransactionCategory, AnalyticsPeriod } from '@prisma/client'
 
+interface TransactionWhere {
+  storeId: string
+  type?: TransactionType
+  category?: TransactionCategory
+  transactionDate?: {
+    gte?: Date
+    lte?: Date
+  }
+  OR?: Array<{
+    description?: { contains: string; mode: 'insensitive' }
+    reference?: { contains: string; mode: 'insensitive' }
+  }>
+  tags?: {
+    hasSome: string[]
+  }
+}
+
+interface CategoryBreakdownWhere {
+  storeId: string
+  transactionDate: {
+    gte: Date
+    lte: Date
+  }
+  type?: TransactionType
+}
+
 export interface FinancialTransaction {
   id: string
   type: TransactionType
@@ -110,7 +136,7 @@ export async function getTransactions(
   try {
     const skip = (page - 1) * limit
 
-    const where: any = { storeId }
+    const where: TransactionWhere = { storeId }
 
     if (filters?.type) where.type = filters.type
     if (filters?.category) where.category = filters.category
@@ -308,7 +334,7 @@ export async function getCategoryBreakdown(
   type?: TransactionType
 ): Promise<CategoryBreakdown[]> {
   try {
-    const where: any = {
+    const where: CategoryBreakdownWhere = {
       storeId,
       transactionDate: {
         gte: startDate,

@@ -1,5 +1,29 @@
 import { prisma } from './prisma'
-import { AdminAction } from '@prisma/client'
+import { AdminAction, Role } from '@prisma/client'
+
+interface AdminActivityLogWhere {
+  adminId?: string
+  action?: AdminAction
+  targetType?: string
+  createdAt?: {
+    gte?: Date
+    lte?: Date
+  }
+}
+
+interface UserFilterWhere {
+  role?: Role
+  isActive?: boolean
+  OR?: Array<{
+    name?: { contains: string; mode: 'insensitive' }
+    email?: { contains: string; mode: 'insensitive' }
+  }>
+  store?: { isNot: null } | null
+  subscription?: {
+    status?: string | { not: string }
+  }
+  trialEndDate?: { gt: Date } | { lt: Date } | { gt: Date; lt: Date }
+}
 
 export interface AdminUser {
   id: string
@@ -17,7 +41,7 @@ export async function logAdminActivity(
   targetType: string,
   targetId: string,
   description: string,
-  metadata?: any,
+  metadata?: Record<string, unknown>,
   ipAddress?: string,
   userAgent?: string
 ): Promise<void> {
@@ -55,7 +79,7 @@ export async function getAdminActivityLogs(
 ) {
   const skip = (page - 1) * limit
 
-  const where: any = {}
+  const where: AdminActivityLogWhere = {}
   if (filters?.adminId) where.adminId = filters.adminId
   if (filters?.action) where.action = filters.action
   if (filters?.targetType) where.targetType = filters.targetType
@@ -279,9 +303,11 @@ export async function getUsers(
 ) {
   const skip = (page - 1) * limit
 
+  // Use any for Prisma where clause to avoid complex type issues
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = {}
 
-  if (filters?.role) where.role = filters.role
+  if (filters?.role) where.role = filters.role as Role
   if (filters?.isActive !== undefined) where.isActive = filters.isActive
   if (filters?.search) {
     where.OR = [
@@ -577,8 +603,8 @@ export async function sendSystemNotification(
       data: {
         title: notification.title,
         message: notification.message,
-        type: notification.type as any,
-        priority: (notification.priority as any) || 'MEDIUM',
+        type: notification.type as never,
+        priority: (notification.priority as never) || 'MEDIUM',
         userId: notification.targetUserId,
         storeId: notification.targetStoreId,
         actionUrl: notification.actionUrl,

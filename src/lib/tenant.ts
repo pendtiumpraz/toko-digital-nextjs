@@ -2,6 +2,16 @@ import { NextRequest } from 'next/server'
 import { prisma } from './prisma'
 import { verifyToken } from './auth'
 
+interface PrismaArgs {
+  where?: Record<string, unknown>
+  data?: Record<string, unknown>
+  include?: Record<string, unknown>
+  select?: Record<string, unknown>
+  orderBy?: Record<string, unknown>
+  skip?: number
+  take?: number
+}
+
 export interface TenantContext {
   storeId: string
   userId: string
@@ -171,35 +181,35 @@ export function createTenantQueries(storeId: string) {
   return {
     // Products scoped to store
     products: {
-      findMany: (args: any = {}) => ({
+      findMany: (args: PrismaArgs = {}) => ({
         ...args,
         where: {
           storeId,
           ...args.where
         }
       }),
-      findUnique: (args: any) => ({
+      findUnique: (args: PrismaArgs) => ({
         ...args,
         where: {
           ...args.where,
           storeId
         }
       }),
-      create: (args: any) => ({
+      create: (args: PrismaArgs) => ({
         ...args,
         data: {
           storeId,
           ...args.data
         }
       }),
-      update: (args: any) => ({
+      update: (args: PrismaArgs) => ({
         ...args,
         where: {
           ...args.where,
           storeId
         }
       }),
-      delete: (args: any) => ({
+      delete: (args: PrismaArgs) => ({
         ...args,
         where: {
           ...args.where,
@@ -210,28 +220,28 @@ export function createTenantQueries(storeId: string) {
 
     // Orders scoped to store
     orders: {
-      findMany: (args: any = {}) => ({
+      findMany: (args: PrismaArgs = {}) => ({
         ...args,
         where: {
           storeId,
           ...args.where
         }
       }),
-      findUnique: (args: any) => ({
+      findUnique: (args: PrismaArgs) => ({
         ...args,
         where: {
           ...args.where,
           storeId
         }
       }),
-      create: (args: any) => ({
+      create: (args: PrismaArgs) => ({
         ...args,
         data: {
           storeId,
           ...args.data
         }
       }),
-      update: (args: any) => ({
+      update: (args: PrismaArgs) => ({
         ...args,
         where: {
           ...args.where,
@@ -242,28 +252,28 @@ export function createTenantQueries(storeId: string) {
 
     // Financial transactions scoped to store
     financialTransactions: {
-      findMany: (args: any = {}) => ({
+      findMany: (args: PrismaArgs = {}) => ({
         ...args,
         where: {
           storeId,
           ...args.where
         }
       }),
-      create: (args: any) => ({
+      create: (args: PrismaArgs) => ({
         ...args,
         data: {
           storeId,
           ...args.data
         }
       }),
-      update: (args: any) => ({
+      update: (args: PrismaArgs) => ({
         ...args,
         where: {
           ...args.where,
           storeId
         }
       }),
-      delete: (args: any) => ({
+      delete: (args: PrismaArgs) => ({
         ...args,
         where: {
           ...args.where,
@@ -274,14 +284,14 @@ export function createTenantQueries(storeId: string) {
 
     // Analytics scoped to store
     analytics: {
-      findMany: (args: any = {}) => ({
+      findMany: (args: PrismaArgs = {}) => ({
         ...args,
         where: {
           storeId,
           ...args.where
         }
       }),
-      create: (args: any) => ({
+      create: (args: PrismaArgs) => ({
         ...args,
         data: {
           storeId,

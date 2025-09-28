@@ -11,7 +11,7 @@ export const prisma =
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
 // Helper to serialize BigInt values
-export function serializeBigInt(obj: any): any {
+export function serializeBigInt<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj, (key, value) =>
     typeof value === 'bigint' ? value.toString() : value
   ))

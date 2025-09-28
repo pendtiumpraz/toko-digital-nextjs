@@ -17,6 +17,12 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+interface UserStore {
+  subdomain?: string;
+  name?: string;
+  id?: string;
+}
+
 // Mock data - replace with real API calls
 const stats = [
   {
@@ -75,7 +81,7 @@ export default function Dashboard() {
   const router = useRouter();
   const [selectedPeriod, setSelectedPeriod] = useState('week');
   const [showNotifications, setShowNotifications] = useState(false);
-  const [userStore, setUserStore] = useState<any>(null);
+  const [userStore, setUserStore] = useState<UserStore | null>(null);
 
   useEffect(() => {
     // Get user data from localStorage or API

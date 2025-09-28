@@ -45,8 +45,8 @@ export default function LoginPage() {
       // Redirect based on user role
       const redirectTo = data.user?.redirectTo || '/dashboard'
       router.push(redirectTo)
-    } catch (err: any) {
-      setError(err.message || 'An error occurred')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setIsLoading(false)
     }

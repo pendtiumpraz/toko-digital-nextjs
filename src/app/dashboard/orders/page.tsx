@@ -208,7 +208,7 @@ export default function OrdersPage() {
 
   const handleUpdateStatus = (orderId: string, newStatus: string) => {
     setOrders(orders.map(order =>
-      order.id === orderId ? { ...order, status: newStatus as any } : order
+      order.id === orderId ? { ...order, status: newStatus as Order['status'] } : order
     ));
   };
 

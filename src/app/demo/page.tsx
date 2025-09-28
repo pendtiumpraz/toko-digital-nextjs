@@ -27,6 +27,24 @@ import {
   Modal,
 } from '@/components';
 
+interface Product {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  originalPrice?: number;
+  images: string[];
+  videoUrl?: string;
+  category?: string;
+  rating?: number;
+  reviewCount?: number;
+  inStock?: boolean;
+  stockCount?: number;
+  isNew?: boolean;
+  isFeatured?: boolean;
+  tags?: string[];
+}
+
 // Sample products data
 const sampleProducts = [
   {
@@ -90,10 +108,10 @@ const sampleProducts = [
 
 export default function DemoPage() {
   const [wishlistedItems, setWishlistedItems] = useState<Set<string>>(new Set());
-  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showVideoModal, setShowVideoModal] = useState(false);
 
-  const toggleWishlist = (product: any) => {
+  const toggleWishlist = (product: Product) => {
     const newWishlisted = new Set(wishlistedItems);
     if (newWishlisted.has(product.id)) {
       newWishlisted.delete(product.id);
@@ -103,12 +121,12 @@ export default function DemoPage() {
     setWishlistedItems(newWishlisted);
   };
 
-  const handleAddToCart = (product: any) => {
+  const handleAddToCart = (product: Product) => {
     console.log('Added to cart:', product);
     // In a real app, this would add to cart state
   };
 
-  const handleQuickView = (product: any) => {
+  const handleQuickView = (product: Product) => {
     setSelectedProduct(product);
   };
 

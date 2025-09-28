@@ -21,7 +21,7 @@ export default function PrivacyPage() {
             <section className="mb-8">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">1. Pendahuluan</h2>
               <p className="text-gray-600 mb-4">
-                Toko Digital ("kami", "kita") berkomitmen untuk melindungi privasi Anda.
+                Toko Digital (&quot;kami&quot;, &quot;kita&quot;) berkomitmen untuk melindungi privasi Anda.
                 Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, dan melindungi
                 informasi pribadi Anda saat menggunakan platform kami.
               </p>

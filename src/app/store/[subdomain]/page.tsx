@@ -31,5 +31,17 @@ export default async function StorePage({ params }: { params: { subdomain: strin
     notFound()
   }
 
-  return <StorePageClient store={store} subdomain={params.subdomain} />
+  // Convert Decimal prices to numbers for client component
+  const storeWithSerializedPrices = {
+    ...store,
+    products: store.products.map(product => ({
+      ...product,
+      price: product.price.toNumber(),
+      comparePrice: product.comparePrice ? product.comparePrice.toNumber() : null,
+      cost: product.cost.toNumber(),
+      profit: product.profit.toNumber()
+    }))
+  }
+
+  return <StorePageClient store={storeWithSerializedPrices} subdomain={params.subdomain} />
 }

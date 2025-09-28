@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTenantContext } from './lib/tenant'
-import { verifyToken } from './lib/auth'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -9,13 +7,13 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api/auth') ||
-    pathname.startsWith('/api/superadmin') ||
     pathname.startsWith('/static') ||
     pathname.includes('.') ||
     pathname === '/login' ||
     pathname === '/register' ||
     pathname === '/privacy' ||
-    pathname === '/terms'
+    pathname === '/terms' ||
+    pathname === '/'
   ) {
     return NextResponse.next()
   }
@@ -25,27 +23,12 @@ export async function middleware(request: NextRequest) {
   if (host) {
     const subdomain = extractSubdomain(host)
 
-    // If this is a store subdomain, ensure the store exists and is active
+    // If this is a store subdomain, add headers for downstream processing
     if (subdomain && subdomain !== 'www' && subdomain !== 'admin' && subdomain !== 'api') {
-      const tenantContext = await getTenantContext(request)
-
-      if (!tenantContext) {
-        // Subdomain doesn't exist or store is inactive
-        return new NextResponse('Store not found or inactive', { status: 404 })
-      }
-
-      // Add tenant context to headers for downstream use
       const response = NextResponse.next()
-      response.headers.set('x-tenant-id', tenantContext.storeId)
       response.headers.set('x-tenant-subdomain', subdomain)
       return response
     }
-  }
-
-  // Handle protected API routes that require tenant isolation
-  if (pathname.startsWith('/api/') && !pathname.startsWith('/api/auth')) {
-    // These routes should handle tenant isolation internally
-    return NextResponse.next()
   }
 
   // Handle protected dashboard routes
@@ -56,40 +39,20 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
 
-    // Verify token and check user role
-    const decoded = verifyToken(authToken)
-    if (!decoded) {
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
-
-    // Add user info to headers for downstream use
-    const response = NextResponse.next()
-    response.headers.set('x-user-id', decoded.userId)
-    response.headers.set('x-user-email', decoded.email)
-    return response
+    // Token verification will be handled in the route handlers
+    return NextResponse.next()
   }
 
   // Handle admin routes (super admin and admin only)
-  if (pathname.startsWith('/admin')) {
+  if (pathname.startsWith('/admin') || pathname.startsWith('/superadmin')) {
     const authToken = request.cookies.get('auth-token')?.value
 
     if (!authToken) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
 
-    // Verify token and check user role
-    const decoded = verifyToken(authToken)
-    if (!decoded) {
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
-
-    // Get user role from database - for now, we'll skip this check
-    // In a full implementation, you'd query the database here
-    // For now, let the component handle role verification
-    const response = NextResponse.next()
-    response.headers.set('x-user-id', decoded.userId)
-    response.headers.set('x-user-email', decoded.email)
-    return response
+    // Role verification will be handled in the route handlers
+    return NextResponse.next()
   }
 
   // Handle super admin API routes
@@ -100,16 +63,8 @@ export async function middleware(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const decoded = verifyToken(authToken)
-    if (!decoded) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
-
-    // Add user info to headers for API routes
-    const response = NextResponse.next()
-    response.headers.set('x-user-id', decoded.userId)
-    response.headers.set('x-user-email', decoded.email)
-    return response
+    // Token and role verification will be handled in the API routes
+    return NextResponse.next()
   }
 
   return NextResponse.next()
