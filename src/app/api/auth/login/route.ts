@@ -1,97 +1,99 @@
-import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import User from '@/models/User';
-import jwt from 'jsonwebtoken';
+import { NextResponse } from 'next/server'
+import { prisma, serializeBigInt } from '@/lib/prisma'
+import { verifyPassword, generateToken } from '@/lib/auth'
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    await connectDB();
+    const { email, password } = await request.json()
 
-    const { email, password } = await request.json();
-
+    // Validate input
     if (!email || !password) {
       return NextResponse.json(
-        { error: 'Please provide email and password' },
+        { error: 'Email dan password harus diisi' },
         { status: 400 }
-      );
+      )
     }
 
-    // Find user with password field
-    const user = await User.findOne({ email }).select('+password');
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: { store: true }
+    })
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { error: 'Email atau password salah' },
         { status: 401 }
-      );
+      )
     }
 
-    // Check password
-    const isPasswordMatched = await user.matchPassword(password);
-
-    if (!isPasswordMatched) {
+    // Verify password
+    const isValid = await verifyPassword(password, user.password)
+    if (!isValid) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { error: 'Email atau password salah' },
         { status: 401 }
-      );
+      )
     }
 
-    // Check if account is active
+    // Check if user is active
     if (!user.isActive) {
       return NextResponse.json(
-        { error: 'Your account has been deactivated' },
+        { error: 'Akun Anda tidak aktif. Hubungi admin.' },
         { status: 403 }
-      );
-    }
-
-    // Check trial expiration
-    if (user.role === 'store_owner' && user.isTrialExpired()) {
-      return NextResponse.json(
-        { error: 'Your free trial has expired. Please subscribe to continue.' },
-        { status: 403 }
-      );
+      )
     }
 
     // Update last login
-    user.lastLogin = new Date();
-    await user.save();
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date() }
+    })
 
     // Generate JWT token
-    const token = jwt.sign(
-      { userId: user._id, email: user.email },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '30d' }
-    );
+    const token = generateToken(user.id, user.email)
 
-    // Create response
-    const response = NextResponse.json({
-      success: true,
-      data: {
+    // Serialize the store data to handle BigInt values
+    const storeData = user.store ? serializeBigInt({
+      id: user.store.id,
+      name: user.store.name,
+      subdomain: user.store.subdomain,
+      whatsappNumber: user.store.whatsappNumber,
+      isActive: user.store.isActive
+    }) : null
+
+    // Return user data and token with proper role-based routing
+    const response = NextResponse.json(
+      {
+        success: true,
         user: {
-          id: user._id,
-          name: user.name,
+          id: user.id,
           email: user.email,
+          name: user.name,
           role: user.role,
-          store: user.store
+          store: storeData,
+          redirectTo: user.role === 'SUPER_ADMIN' ? '/admin' :
+                     user.role === 'ADMIN' ? '/admin' : '/dashboard'
         },
         token
-      }
-    });
+      },
+      { status: 200 }
+    )
 
     // Set cookie
-    response.cookies.set('token', token, {
+    response.cookies.set('auth-token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
-    });
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 // 30 days
+    })
 
-    return response;
-  } catch (error: any) {
-    console.error('Login error:', error);
+    return response
+  } catch (error) {
+    console.error('Login error:', error)
     return NextResponse.json(
-      { error: error.message || 'Login failed' },
+      { error: 'Terjadi kesalahan pada server' },
       { status: 500 }
-    );
+    )
   }
 }

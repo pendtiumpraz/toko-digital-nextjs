@@ -1,91 +1,140 @@
-import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import User from '@/models/User';
-import Store from '@/models/Store';
-import jwt from 'jsonwebtoken';
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { hashPassword, generateToken } from '@/lib/auth'
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    await connectDB();
+    const { name, email, password, phone, storeName } = await request.json()
 
-    const { name, email, password, phone, storeName, subdomain } = await request.json();
+    // Validate input
+    if (!name || !email || !password || !phone || !storeName) {
+      return NextResponse.json(
+        { error: 'Semua field harus diisi' },
+        { status: 400 }
+      )
+    }
 
-    // Check if user exists
-    const existingUser = await User.findOne({ email });
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    })
+
     if (existingUser) {
       return NextResponse.json(
-        { error: 'Email already registered' },
+        { error: 'Email sudah terdaftar' },
         { status: 400 }
-      );
+      )
     }
 
-    // Check if subdomain exists
-    const existingSubdomain = await Store.findOne({ subdomain });
-    if (existingSubdomain) {
+    // Generate subdomain from store name
+    const subdomain = storeName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+
+    // Check if subdomain is available
+    const existingStore = await prisma.store.findUnique({
+      where: { subdomain }
+    })
+
+    if (existingStore) {
       return NextResponse.json(
-        { error: 'Subdomain already taken' },
+        { error: 'Nama toko sudah digunakan, silakan gunakan nama lain' },
         { status: 400 }
-      );
+      )
     }
 
-    // Create user
-    const user = await User.create({
-      name,
-      email,
-      password,
-      phone,
-      role: 'store_owner'
-    });
+    // Hash password
+    const hashedPassword = await hashPassword(password)
 
-    // Create store
-    const store = await Store.create({
-      owner: user._id,
-      name: storeName || `${name}'s Store`,
-      subdomain,
-      whatsappNumber: phone,
-      email
-    });
+    // Calculate trial end date (14 days from now)
+    const trialEndDate = new Date()
+    trialEndDate.setDate(trialEndDate.getDate() + 14)
 
-    // Update user with store reference
-    user.store = store._id as any;
-    await user.save();
+    // Create user with store in transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create user
+      const user = await tx.user.create({
+        data: {
+          name,
+          email,
+          password: hashedPassword,
+          phone,
+          role: 'STORE_OWNER',
+          trialStartDate: new Date(),
+          trialEndDate: trialEndDate,
+          isActive: true,
+          isEmailVerified: false
+        }
+      })
+
+      // Create store
+      const store = await tx.store.create({
+        data: {
+          ownerId: user.id,
+          name: storeName,
+          subdomain,
+          whatsappNumber: phone,
+          email,
+          currency: 'IDR',
+          isActive: true
+        }
+      })
+
+      // Create subscription
+      await tx.subscription.create({
+        data: {
+          userId: user.id,
+          storeId: store.id,
+          plan: 'FREE',
+          status: 'TRIAL',
+          trialStartDate: new Date(),
+          trialEndDate: trialEndDate
+        }
+      })
+
+      return { user, store }
+    })
 
     // Generate JWT token
-    const token = jwt.sign(
-      { userId: user._id, email: user.email },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '30d' }
-    );
+    const token = generateToken(result.user.id, result.user.email)
 
-    // Create response with token
-    const response = NextResponse.json({
-      success: true,
-      data: {
+    // Return user data and token
+    const response = NextResponse.json(
+      {
+        success: true,
+        message: 'Registrasi berhasil! Trial 14 hari dimulai.',
         user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          store: store._id
+          id: result.user.id,
+          email: result.user.email,
+          name: result.user.name,
+          role: result.user.role,
+          store: {
+            id: result.store.id,
+            name: result.store.name,
+            subdomain: result.store.subdomain
+          }
         },
         token
-      }
-    });
+      },
+      { status: 201 }
+    )
 
     // Set cookie
-    response.cookies.set('token', token, {
+    response.cookies.set('auth-token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
-    });
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 // 30 days
+    })
 
-    return response;
-  } catch (error: any) {
-    console.error('Register error:', error);
+    return response
+  } catch (error) {
+    console.error('Register error:', error)
     return NextResponse.json(
-      { error: error.message || 'Registration failed' },
+      { error: 'Terjadi kesalahan saat registrasi' },
       { status: 500 }
-    );
+    )
   }
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import {
   ChartBarIcon,
   ShoppingBagIcon,
@@ -9,9 +10,12 @@ import {
   ArrowUpIcon,
   ArrowDownIcon,
   BellIcon,
-  Cog6ToothIcon
+  Cog6ToothIcon,
+  ArrowRightOnRectangleIcon,
+  GlobeAltIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 // Mock data - replace with real API calls
 const stats = [
@@ -68,19 +72,55 @@ const notifications = [
 ];
 
 export default function Dashboard() {
+  const router = useRouter();
   const [selectedPeriod, setSelectedPeriod] = useState('week');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [userStore, setUserStore] = useState<any>(null);
+
+  useEffect(() => {
+    // Get user data from localStorage or API
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const user = JSON.parse(userData);
+      setUserStore(user.store);
+    }
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      const res = await fetch('/api/auth/logout', { method: 'POST' });
+      if (res.ok) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        router.push('/login');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50">
+      {/* Enhanced Header */}
+      <header className="bg-white/70 backdrop-blur-xl shadow-2xl shadow-black/5 border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
             </div>
             <div className="flex items-center space-x-4">
+              {/* View Store Button */}
+              {userStore && (
+                <Link
+                  href={`/store/${userStore.subdomain || 'toko-praz'}`}
+                  target="_blank"
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <GlobeAltIcon className="h-5 w-5" />
+                  <span>Lihat Toko</span>
+                </Link>
+              )}
+
               {/* Period Selector */}
               <select
                 value={selectedPeriod}
@@ -92,6 +132,15 @@ export default function Dashboard() {
                 <option value="month">This Month</option>
                 <option value="year">This Year</option>
               </select>
+
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                <span>Logout</span>
+              </button>
 
               {/* Notifications */}
               <div className="relative">
@@ -136,16 +185,33 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Grid */}
+        {/* Enhanced Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat) => (
-            <div key={stat.name} className="bg-white rounded-lg shadow p-6">
+          {stats.map((stat, index) => (
+            <motion.div
+              key={stat.name}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1, duration: 0.6 }}
+              whileHover={{ y: -8, scale: 1.02 }}
+              className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl shadow-gray-500/10 hover:shadow-2xl hover:shadow-blue-500/20 transition-all duration-500 p-6 border border-white/20"
+            >
               <div className="flex items-center justify-between mb-4">
-                <div className="p-2 bg-blue-50 rounded-lg">
-                  <stat.icon className="h-6 w-6 text-blue-600" />
+                <div className={`p-3 rounded-2xl ${
+                  stat.name.includes('Revenue') ? 'bg-gradient-to-br from-green-100 to-green-200' :
+                  stat.name.includes('Orders') ? 'bg-gradient-to-br from-blue-100 to-blue-200' :
+                  stat.name.includes('Customers') ? 'bg-gradient-to-br from-purple-100 to-purple-200' :
+                  'bg-gradient-to-br from-yellow-100 to-yellow-200'
+                }`}>
+                  <stat.icon className={`h-7 w-7 ${
+                    stat.name.includes('Revenue') ? 'text-green-600' :
+                    stat.name.includes('Orders') ? 'text-blue-600' :
+                    stat.name.includes('Customers') ? 'text-purple-600' :
+                    'text-yellow-600'
+                  }`} />
                 </div>
-                <div className={`flex items-center text-sm ${
-                  stat.trend === 'up' ? 'text-green-600' : 'text-red-600'
+                <div className={`flex items-center text-sm font-medium px-2 py-1 rounded-full ${
+                  stat.trend === 'up' ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
                 }`}>
                   {stat.trend === 'up' ? (
                     <ArrowUpIcon className="h-4 w-4 mr-1" />
@@ -156,30 +222,52 @@ export default function Dashboard() {
                 </div>
               </div>
               <div>
-                <p className="text-2xl font-semibold text-gray-900">{stat.value}</p>
-                <p className="text-sm text-gray-500 mt-1">{stat.name}</p>
+                <p className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-1">{stat.value}</p>
+                <p className="text-sm text-gray-600 font-medium">{stat.name}</p>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
 
-        {/* Charts and Tables */}
+        {/* Enhanced Charts and Tables */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* Revenue Chart */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Revenue Overview</h2>
-            <div className="h-64 bg-gray-50 rounded flex items-center justify-center">
-              <p className="text-gray-400">Chart will be implemented here</p>
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.5, duration: 0.6 }}
+            className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl shadow-gray-500/10 p-8 border border-white/20"
+          >
+            <h2 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-6">Revenue Overview</h2>
+            <div className="h-64 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl flex items-center justify-center border border-blue-100">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <ChartBarIcon className="h-8 w-8 text-white" />
+                </div>
+                <p className="text-gray-600 font-medium">Interactive Chart Coming Soon</p>
+                <p className="text-sm text-gray-500 mt-1">Revenue analytics will be displayed here</p>
+              </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Order Status Distribution */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Order Status</h2>
-            <div className="h-64 bg-gray-50 rounded flex items-center justify-center">
-              <p className="text-gray-400">Pie chart will be implemented here</p>
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.6, duration: 0.6 }}
+            className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl shadow-gray-500/10 p-8 border border-white/20"
+          >
+            <h2 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-6">Order Status</h2>
+            <div className="h-64 bg-gradient-to-br from-green-50 to-teal-50 rounded-2xl flex items-center justify-center border border-green-100">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <ShoppingBagIcon className="h-8 w-8 text-white" />
+                </div>
+                <p className="text-gray-600 font-medium">Order Analytics Coming Soon</p>
+                <p className="text-sm text-gray-500 mt-1">Order distribution charts will be displayed here</p>
+              </div>
             </div>
-          </div>
+          </motion.div>
         </div>
 
         {/* Recent Orders & Top Products */}

@@ -5,7 +5,6 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 // User model
@@ -24,7 +23,7 @@ model User {
   resetPasswordExpire    DateTime?
   lastLogin              DateTime?
   trialStartDate         DateTime       @default(now())
-  trialEndDate           DateTime       @default(dbgenerated("NOW() + INTERVAL '14 days'"))
+  trialEndDate           DateTime
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
 
@@ -32,6 +31,8 @@ model User {
   store                  Store?
   subscription           Subscription?
   chats                  Chat[]         @relation("UserChats")
+  adminActivities        AdminActivityLog[] @relation("AdminActivities")
+  notifications          SystemNotification[] @relation("UserNotifications")
 
   @@index([email])
 }
@@ -88,7 +89,7 @@ model Store {
   rating        Float     @default(0)
   totalReviews  Int       @default(0)
   totalSales    Int       @default(0)
-  totalRevenue  Decimal   @default(0) @db.Decimal(15, 2)
+  totalRevenue  Decimal   @default(0) 
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -98,6 +99,10 @@ model Store {
   orders        Order[]
   chats         Chat[]
   subscription  Subscription?
+  financialTransactions FinancialTransaction[] @relation("StoreFinancials")
+  recurringTransactions RecurringTransaction[] @relation("StoreRecurringTransactions")
+  analytics     StoreAnalytics[] @relation("StoreAnalytics")
+  notifications SystemNotification[] @relation("StoreNotifications")
 
   @@index([subdomain])
   @@index([customDomain])
@@ -116,10 +121,10 @@ model Product {
   subCategory   String?
 
   // Pricing
-  price         Decimal   @db.Decimal(15, 2)
-  comparePrice  Decimal?  @db.Decimal(15, 2)
-  cost          Decimal   @default(0) @db.Decimal(15, 2)
-  profit        Decimal   @default(0) @db.Decimal(15, 2)
+  price         Decimal   
+  comparePrice  Decimal?  
+  cost          Decimal   @default(0) 
+  profit        Decimal   @default(0) 
   profitMargin  Float     @default(0)
 
   // Inventory
@@ -224,13 +229,13 @@ model Order {
   shippingNotes  String?
 
   // Pricing
-  subtotal      Decimal   @db.Decimal(15, 2)
-  shipping      Decimal   @default(0) @db.Decimal(15, 2)
-  tax           Decimal   @default(0) @db.Decimal(15, 2)
-  discount      Decimal   @default(0) @db.Decimal(15, 2)
-  total         Decimal   @db.Decimal(15, 2)
-  totalCost     Decimal   @default(0) @db.Decimal(15, 2)
-  totalProfit   Decimal   @default(0) @db.Decimal(15, 2)
+  subtotal      Decimal   
+  shipping      Decimal   @default(0) 
+  tax           Decimal   @default(0) 
+  discount      Decimal   @default(0) 
+  total         Decimal   
+  totalCost     Decimal   @default(0) 
+  totalProfit   Decimal   @default(0) 
 
   // Payment
   paymentMethod PaymentMethod @default(WHATSAPP)
@@ -248,6 +253,7 @@ model Order {
 
   // Relations
   items         OrderItem[]
+  financialTransactions FinancialTransaction[]
 
   @@index([storeId, status])
   @@index([orderNumber])
@@ -262,11 +268,11 @@ model OrderItem {
   product     Product   @relation(fields: [productId], references: [id])
 
   name        String
-  price       Decimal   @db.Decimal(15, 2)
-  cost        Decimal   @default(0) @db.Decimal(15, 2)
+  price       Decimal   
+  cost        Decimal   @default(0) 
   quantity    Int
-  subtotal    Decimal   @db.Decimal(15, 2)
-  profit      Decimal   @default(0) @db.Decimal(15, 2)
+  subtotal    Decimal   
+  profit      Decimal   @default(0) 
 
   variant     String?
   createdAt   DateTime  @default(now())
@@ -297,12 +303,12 @@ model Subscription {
 
   // Billing
   billingCycle  BillingCycle @default(MONTHLY)
-  price         Decimal   @default(0) @db.Decimal(15, 2)
+  price         Decimal   @default(0) 
   currency      Currency  @default(IDR)
 
   // Dates
   trialStartDate DateTime @default(now())
-  trialEndDate  DateTime  @default(dbgenerated("NOW() + INTERVAL '14 days'"))
+  trialEndDate  DateTime
   startDate     DateTime?
   endDate       DateTime?
   nextBillingDate DateTime?
@@ -367,6 +373,7 @@ model ChatMessage {
 
 // ENUMS
 enum Role {
+  SUPER_ADMIN
   ADMIN
   STORE_OWNER
   CUSTOMER
@@ -508,4 +515,240 @@ enum SenderType {
   STORE_OWNER
   ADMIN
   SYSTEM
+}
+
+// Financial Transaction model for income/expense tracking
+model FinancialTransaction {
+  id            String    @id @default(cuid())
+  storeId       String
+  store         Store     @relation("StoreFinancials", fields: [storeId], references: [id], onDelete: Cascade)
+
+  // Transaction details
+  type          TransactionType
+  category      TransactionCategory
+  amount        Decimal
+  description   String
+  reference     String?   // Order ID, invoice number, etc.
+
+  // Categorization
+  tags          String[]  // For custom categorization
+
+  // Metadata
+  isRecurring   Boolean   @default(false)
+  recurringId   String?   // Link to parent recurring transaction
+
+  // Date tracking
+  transactionDate DateTime @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations - One transaction can relate to one order, but orders can have multiple transactions
+  order         Order?    @relation(fields: [reference], references: [orderNumber], onDelete: SetNull)
+
+  @@index([storeId, type])
+  @@index([storeId, transactionDate])
+  @@index([storeId, category])
+}
+
+// Enhanced Order model with better financial tracking
+model RecurringTransaction {
+  id            String    @id @default(cuid())
+  storeId       String
+  store         Store     @relation("StoreRecurringTransactions", fields: [storeId], references: [id], onDelete: Cascade)
+
+  // Template details
+  type          TransactionType
+  category      TransactionCategory
+  amount        Decimal
+  description   String
+
+  // Recurrence settings
+  frequency     RecurrenceFrequency
+  interval      Int       @default(1) // Every N periods
+  dayOfMonth    Int?      // For monthly/yearly
+  dayOfWeek     Int?      // For weekly (0=Sunday)
+
+  // Date range
+  startDate     DateTime
+  endDate       DateTime?
+  nextDate      DateTime
+
+  // Status
+  isActive      Boolean   @default(true)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([storeId, isActive])
+  @@index([nextDate])
+}
+
+// Super Admin Activity Log
+model AdminActivityLog {
+  id            String    @id @default(cuid())
+  adminId       String
+  admin         User      @relation("AdminActivities", fields: [adminId], references: [id], onDelete: Cascade)
+
+  action        AdminAction
+  targetType    String    // 'user', 'store', 'subscription', etc.
+  targetId      String    // ID of the affected entity
+  description   String
+  metadata      Json?     // Additional data about the action
+
+  ipAddress     String?
+  userAgent     String?
+
+  createdAt     DateTime  @default(now())
+
+  @@index([adminId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// Store Analytics Snapshot
+model StoreAnalytics {
+  id            String    @id @default(cuid())
+  storeId       String
+  store         Store     @relation("StoreAnalytics", fields: [storeId], references: [id], onDelete: Cascade)
+
+  // Period
+  date          DateTime
+  period        AnalyticsPeriod
+
+  // Sales metrics
+  totalOrders   Int       @default(0)
+  totalRevenue  Decimal   @default(0)
+  totalProfit   Decimal   @default(0)
+  avgOrderValue Decimal   @default(0)
+
+  // Product metrics
+  totalProducts Int       @default(0)
+  activeProducts Int      @default(0)
+  outOfStock    Int       @default(0)
+
+  // Traffic metrics
+  totalViews    Int       @default(0)
+  uniqueVisitors Int      @default(0)
+  conversionRate Float    @default(0)
+
+  // Financial metrics
+  totalIncome   Decimal   @default(0)
+  totalExpenses Decimal   @default(0)
+  netProfit     Decimal   @default(0)
+
+  createdAt     DateTime  @default(now())
+
+  @@unique([storeId, date, period])
+  @@index([storeId, period])
+  @@index([date])
+}
+
+// System Notification model
+model SystemNotification {
+  id            String    @id @default(cuid())
+
+  // Target
+  userId        String?
+  user          User?     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  storeId       String?
+  store         Store?    @relation("StoreNotifications", fields: [storeId], references: [id], onDelete: Cascade)
+
+  // Content
+  title         String
+  message       String
+  type          NotificationType
+  priority      Priority  @default(MEDIUM)
+
+  // Actions
+  actionUrl     String?
+  actionLabel   String?
+
+  // Status
+  isRead        Boolean   @default(false)
+  readAt        DateTime?
+
+  // Scheduling
+  scheduledFor  DateTime?
+  expiresAt     DateTime?
+
+  createdAt     DateTime  @default(now())
+
+  @@index([userId, isRead])
+  @@index([storeId, isRead])
+  @@index([type, priority])
+}
+
+// New enums for financial tracking
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionCategory {
+  // Income categories
+  PRODUCT_SALES
+  SERVICE_SALES
+  REFUNDS_RECEIVED
+  INVESTMENT_INCOME
+  OTHER_INCOME
+
+  // Expense categories
+  INVENTORY_PURCHASE
+  MARKETING_ADVERTISING
+  SHIPPING_FULFILLMENT
+  OFFICE_SUPPLIES
+  UTILITIES
+  RENT_LEASE
+  INSURANCE
+  PROFESSIONAL_SERVICES
+  TAXES_FEES
+  EQUIPMENT_SOFTWARE
+  TRAVEL_MEALS
+  REFUNDS_ISSUED
+  OTHER_EXPENSE
+}
+
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum AdminAction {
+  USER_CREATED
+  USER_ACTIVATED
+  USER_DEACTIVATED
+  USER_DELETED
+  TRIAL_EXTENDED
+  TRIAL_ENDED
+  SUBSCRIPTION_ACTIVATED
+  SUBSCRIPTION_CANCELLED
+  STORE_VERIFIED
+  STORE_SUSPENDED
+  PAYMENT_PROCESSED
+  SYSTEM_SETTING_CHANGED
+}
+
+enum AnalyticsPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum NotificationType {
+  TRIAL_EXPIRING
+  TRIAL_EXPIRED
+  PAYMENT_DUE
+  PAYMENT_FAILED
+  SUBSCRIPTION_ACTIVATED
+  SUBSCRIPTION_CANCELLED
+  STORE_LIMIT_REACHED
+  SECURITY_ALERT
+  SYSTEM_MAINTENANCE
+  FEATURE_ANNOUNCEMENT
+  GENERAL
 }
