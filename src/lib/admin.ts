@@ -1,5 +1,7 @@
 import { prisma } from './prisma'
 import { AdminAction, Role } from '@prisma/client'
+import { verifyToken } from './auth'
+import { NextRequest } from 'next/server'
 
 interface AdminActivityLogWhere {
   adminId?: string
@@ -16,6 +18,82 @@ export interface AdminUser {
   email: string
   name: string
   role: string
+}
+
+export interface AdminAuthResult {
+  success: boolean
+  user?: AdminUser
+  error?: string
+}
+
+/**
+ * Verify admin authentication from request
+ */
+export async function verifyAdminAuth(request: NextRequest): Promise<AdminAuthResult> {
+  try {
+    // Get authorization header
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return { success: false, error: 'Unauthorized' }
+    }
+
+    // Extract and verify token
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    if (!decoded) {
+      return { success: false, error: 'Invalid token' }
+    }
+
+    // Get user and verify admin role
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        isActive: true
+      }
+    })
+
+    if (!user) {
+      return { success: false, error: 'User not found' }
+    }
+
+    if (!user.isActive) {
+      return { success: false, error: 'Account deactivated' }
+    }
+
+    // Check if user has admin privileges (SUPER_ADMIN or ADMIN)
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
+      return { success: false, error: 'Forbidden' }
+    }
+
+    return {
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role
+      }
+    }
+  } catch (error) {
+    console.error('Error verifying admin auth:', error)
+    return { success: false, error: 'Internal server error' }
+  }
+}
+
+/**
+ * Extract request metadata for logging
+ */
+export function getRequestMetadata(request: NextRequest) {
+  return {
+    ipAddress: request.headers.get('x-forwarded-for') ||
+               request.headers.get('x-real-ip') ||
+               'unknown',
+    userAgent: request.headers.get('user-agent') || 'unknown'
+  }
 }
 
 /**
