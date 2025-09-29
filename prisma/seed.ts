@@ -10,7 +10,7 @@ async function main() {
   await prisma.user.deleteMany()
 
   // Create Super Admin Account
-  const superAdminPassword = await bcrypt.hash('Admin@2025!', 12)
+  const superAdminPassword = await bcrypt.hash('admin123', 12)
 
   const superAdmin = await prisma.user.create({
     data: {
@@ -76,7 +76,7 @@ async function main() {
   console.log('---')
   console.log('🔑 Super Admin Credentials:')
   console.log('Email: admin@dibeli.my.id')
-  console.log('Password: Admin@2025!')
+  console.log('Password: admin123')
   console.log('Role: SUPER_ADMIN')
   console.log('---')
   console.log('🧪 Test User Credentials:')

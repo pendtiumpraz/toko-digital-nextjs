@@ -1,0 +1,437 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// User model
+model User {
+  id                     String         @id @default(cuid())
+  email                  String         @unique
+  name                   String
+  password               String
+  phone                  String
+  role                   Role           @default(STORE_OWNER)
+  isActive               Boolean        @default(true)
+  isEmailVerified        Boolean        @default(false)
+  emailVerificationToken String?
+  lastLogin              DateTime?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  trialStartDate         DateTime?
+  trialEndDate           DateTime?
+
+  // Relations
+  store          Store?
+  subscription   Subscription?
+  activityLogs   AdminActivityLog[]
+}
+
+// Store model
+model Store {
+  id                    String         @id @default(cuid())
+  ownerId               String         @unique
+  name                  String
+  subdomain             String         @unique
+  domain                String?
+  logo                  String?
+  whatsappNumber        String
+  email                 String
+  address               String?
+  description           String?
+  isActive              Boolean        @default(true)
+  currency              String         @default("IDR")
+  theme                 String         @default("default")
+  enableWhatsAppCheckout Boolean       @default(true)
+  enableFinancialReports Boolean       @default(true)
+  enableMultipleAdmins   Boolean       @default(false)
+  socialMedia           String?        // JSON string for social media links
+  businessHours         String?        // JSON string for business hours
+  customSettings        String?        // JSON string for custom settings
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  // Relations
+  owner                 User           @relation(fields: [ownerId], references: [id])
+  products              Product[]
+  productImages         ProductImage[]
+  transactions          Transaction[]
+  subscriptions         Subscription[]
+  orders               Order[]
+  customers            Customer[]
+  bankAccounts         BankAccount[]
+  invoices             Invoice[]
+  expenses             Expense[]
+  reports              Report[]
+}
+
+// Product model with additional ecommerce fields
+model Product {
+  id            String         @id @default(cuid())
+  storeId       String
+  name          String
+  slug          String
+  description   String
+  category      Category       @default(UMUM)
+  price         Float          @default(0)
+  comparePrice  Float?
+  cost          Float          @default(0)
+  profit        Float          @default(0)
+  stock         Int            @default(0)
+  sku           String?
+  barcode       String?
+  weight        Float?
+  isActive      Boolean        @default(true)
+  isFeatured    Boolean        @default(false)
+  tags          String?        // JSON string for tags
+  metadata      String?        // JSON string for custom metadata
+  viewCount     Int            @default(0)
+  soldCount     Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  // Relations
+  store         Store          @relation(fields: [storeId], references: [id])
+  images        ProductImage[]
+  orderItems    OrderItem[]
+}
+
+// Product Images model
+model ProductImage {
+  id          String   @id @default(cuid())
+  productId   String
+  storeId     String
+  url         String
+  alt         String?
+  isPrimary   Boolean  @default(false)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  product     Product  @relation(fields: [productId], references: [id])
+  store       Store    @relation(fields: [storeId], references: [id])
+}
+
+// Transaction model for financial management
+model Transaction {
+  id               String              @id @default(cuid())
+  storeId          String
+  type             TransactionType
+  category         TransactionCategory @default(OTHER)
+  amount           Float
+  description      String
+  reference        String?
+  transactionDate  DateTime
+  tags             String?             // JSON string for tags
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  // Relations
+  store            Store               @relation(fields: [storeId], references: [id])
+}
+
+// Order model
+model Order {
+  id              String        @id @default(cuid())
+  storeId         String
+  customerId      String?
+  orderNumber     String        @unique
+  status          OrderStatus   @default(PENDING)
+  subtotal        Float
+  tax             Float         @default(0)
+  shipping        Float         @default(0)
+  discount        Float         @default(0)
+  total           Float
+  paymentMethod   String?
+  paymentStatus   PaymentStatus @default(PENDING)
+  notes           String?
+  shippingAddress String?
+  billingAddress  String?
+  metadata        String?       // JSON string for custom data
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  store           Store         @relation(fields: [storeId], references: [id])
+  customer        Customer?     @relation(fields: [customerId], references: [id])
+  items           OrderItem[]
+}
+
+// OrderItem model
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  productId  String
+  quantity   Int
+  price      Float
+  total      Float
+  createdAt  DateTime @default(now())
+
+  // Relations
+  order      Order    @relation(fields: [orderId], references: [id])
+  product    Product  @relation(fields: [productId], references: [id])
+}
+
+// Customer model
+model Customer {
+  id           String    @id @default(cuid())
+  storeId      String
+  name         String
+  email        String?
+  phone        String
+  address      String?
+  totalOrders  Int       @default(0)
+  totalSpent   Float     @default(0)
+  tags         String?   // JSON string for tags
+  notes        String?
+  isBlocked    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  store        Store     @relation(fields: [storeId], references: [id])
+  orders       Order[]
+}
+
+// Bank Account model for financial management
+model BankAccount {
+  id            String   @id @default(cuid())
+  storeId       String
+  accountName   String
+  accountNumber String
+  bankName      String
+  balance       Float    @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  store         Store    @relation(fields: [storeId], references: [id])
+}
+
+// Invoice model
+model Invoice {
+  id            String        @id @default(cuid())
+  storeId       String
+  invoiceNumber String        @unique
+  customerName  String
+  customerEmail String?
+  customerPhone String?
+  items         String        // JSON string for items
+  subtotal      Float
+  tax           Float         @default(0)
+  discount      Float         @default(0)
+  total         Float
+  status        InvoiceStatus @default(DRAFT)
+  dueDate       DateTime?
+  paidDate      DateTime?
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  store         Store         @relation(fields: [storeId], references: [id])
+}
+
+// Expense model
+model Expense {
+  id          String          @id @default(cuid())
+  storeId     String
+  category    ExpenseCategory @default(OTHER)
+  amount      Float
+  description String
+  date        DateTime
+  vendor      String?
+  receipt     String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  // Relations
+  store       Store           @relation(fields: [storeId], references: [id])
+}
+
+// Report model
+model Report {
+  id          String     @id @default(cuid())
+  storeId     String
+  type        ReportType
+  name        String
+  data        String     // JSON string for report data
+  period      String
+  createdAt   DateTime   @default(now())
+
+  // Relations
+  store       Store      @relation(fields: [storeId], references: [id])
+}
+
+// Subscription model
+model Subscription {
+  id             String             @id @default(cuid())
+  userId         String             @unique
+  storeId        String
+  plan           Plan               @default(FREE)
+  status         SubscriptionStatus @default(TRIAL)
+  features       String?            // JSON string for enabled features
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  trialStartDate     DateTime?
+  trialEndDate       DateTime?
+  cancelAtPeriodEnd  Boolean        @default(false)
+  canceledAt         DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  // Relations
+  user           User               @relation(fields: [userId], references: [id])
+  store          Store              @relation(fields: [storeId], references: [id])
+}
+
+// Admin Activity Log
+model AdminActivityLog {
+  id          String        @id @default(cuid())
+  adminId     String
+  action      AdminAction
+  targetType  String
+  targetId    String
+  description String
+  metadata    String?       // JSON string for additional data
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime      @default(now())
+
+  // Relations
+  admin       User          @relation(fields: [adminId], references: [id])
+}
+
+// Enums
+enum Role {
+  STORE_OWNER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum Plan {
+  FREE
+  BASIC
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum TransactionCategory {
+  SALES
+  PURCHASE
+  SALARY
+  RENT
+  UTILITIES
+  MARKETING
+  SHIPPING
+  TAX
+  REFUND
+  OTHER
+}
+
+enum Category {
+  UMUM
+  ELEKTRONIK
+  FASHION_PRIA
+  FASHION_WANITA
+  FASHION_ANAK
+  KECANTIKAN
+  KESEHATAN
+  OLAHRAGA
+  MAKANAN_MINUMAN
+  BUKU_ATK
+  OTOMOTIF
+  RUMAH_TANGGA
+  HOBI_KOLEKSI
+  FOTOGRAFI
+  KOMPUTER_AKSESORIS
+  HANDPHONE_AKSESORIS
+  PERAWATAN_BAYI
+  TRAVEL_LUGGAGE
+  WEDDING
+  PERLENGKAPAN_PESTA
+  PERTUKANGAN
+  MAINAN_ANAK
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELED
+}
+
+enum ExpenseCategory {
+  PURCHASE
+  SALARY
+  RENT
+  UTILITIES
+  MARKETING
+  SHIPPING
+  SUPPLIES
+  MAINTENANCE
+  OTHER
+}
+
+enum ReportType {
+  SALES
+  INVENTORY
+  FINANCIAL
+  CUSTOMER
+  PRODUCT_PERFORMANCE
+}
+
+enum AdminAction {
+  USER_CREATE
+  USER_UPDATE
+  USER_DELETE
+  USER_ACTIVATE
+  USER_DEACTIVATE
+  SUBSCRIPTION_UPDATE
+  STORE_UPDATE
+  LOGIN
+  LOGOUT
+}
+
+enum AnalyticsPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
