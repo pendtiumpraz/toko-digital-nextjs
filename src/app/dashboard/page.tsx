@@ -9,13 +9,12 @@ import {
   CurrencyDollarIcon,
   ArrowUpIcon,
   ArrowDownIcon,
-  BellIcon,
-  Cog6ToothIcon,
-  ArrowRightOnRectangleIcon,
-  GlobeAltIcon
+  GlobeAltIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 
 interface UserStore {
   subdomain?: string;
@@ -23,65 +22,69 @@ interface UserStore {
   id?: string;
 }
 
-// Mock data - replace with real API calls
-const stats = [
-  {
-    name: 'Total Revenue',
-    value: 'Rp 45.2M',
-    change: '+12.5%',
-    trend: 'up',
-    icon: CurrencyDollarIcon
-  },
-  {
-    name: 'Total Orders',
-    value: '356',
-    change: '+8.2%',
-    trend: 'up',
-    icon: ShoppingBagIcon
-  },
-  {
-    name: 'Total Customers',
-    value: '289',
-    change: '+3.1%',
-    trend: 'up',
-    icon: UserGroupIcon
-  },
-  {
-    name: 'Conversion Rate',
-    value: '3.2%',
-    change: '-0.4%',
-    trend: 'down',
-    icon: ChartBarIcon
-  },
-];
+interface DashboardStats {
+  totalRevenue: {
+    value: string;
+    change: string;
+    trend: 'up' | 'down';
+    rawValue: number;
+  };
+  totalOrders: {
+    value: string;
+    change: string;
+    trend: 'up' | 'down';
+    rawValue: number;
+  };
+  totalCustomers: {
+    value: string;
+    change: string;
+    trend: 'up' | 'down';
+    rawValue: number;
+  };
+  conversionRate: {
+    value: string;
+    change: string;
+    trend: 'up' | 'down';
+    rawValue: number;
+  };
+  recentOrders: Array<{
+    id: string;
+    customer: string;
+    total: string;
+    status: string;
+    date: string;
+  }>;
+  topProducts: Array<{
+    name: string;
+    sold: number;
+    revenue: number;
+    stock: number;
+  }>;
+}
 
-const recentOrders = [
-  { id: 'ORD-001', customer: 'John Doe', total: 'Rp 250.000', status: 'processing', date: '2024-01-15' },
-  { id: 'ORD-002', customer: 'Jane Smith', total: 'Rp 450.000', status: 'shipped', date: '2024-01-15' },
-  { id: 'ORD-003', customer: 'Bob Johnson', total: 'Rp 150.000', status: 'delivered', date: '2024-01-14' },
-  { id: 'ORD-004', customer: 'Alice Brown', total: 'Rp 325.000', status: 'pending', date: '2024-01-14' },
-  { id: 'ORD-005', customer: 'Charlie Wilson', total: 'Rp 575.000', status: 'processing', date: '2024-01-13' },
-];
+interface LoadingState {
+  stats: boolean;
+  charts: boolean;
+}
 
-const topProducts = [
-  { name: 'iPhone 15 Pro', sold: 45, revenue: 'Rp 450M', stock: 12 },
-  { name: 'Samsung Galaxy S24', sold: 38, revenue: 'Rp 342M', stock: 8 },
-  { name: 'MacBook Pro M3', sold: 22, revenue: 'Rp 440M', stock: 5 },
-  { name: 'iPad Pro 2024', sold: 19, revenue: 'Rp 152M', stock: 15 },
-  { name: 'AirPods Pro', sold: 67, revenue: 'Rp 201M', stock: 25 },
-];
-
-const notifications = [
-  { id: 1, message: 'Low stock alert: iPhone 15 Pro', type: 'warning', time: '2 hours ago' },
-  { id: 2, message: 'New order received from John Doe', type: 'info', time: '3 hours ago' },
-  { id: 3, message: 'Payment confirmed for Order #ORD-002', type: 'success', time: '5 hours ago' },
-];
+interface ErrorState {
+  stats: string | null;
+  charts: string | null;
+}
 
 export default function Dashboard() {
   const router = useRouter();
   const [selectedPeriod, setSelectedPeriod] = useState('week');
-  const [showNotifications, setShowNotifications] = useState(false);
   const [userStore, setUserStore] = useState<UserStore | null>(null);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState<LoadingState>({
+    stats: true,
+    charts: true
+  });
+  const [error, setError] = useState<ErrorState>({
+    stats: null,
+    charts: null
+  });
 
   useEffect(() => {
     // Get user data from localStorage or API
@@ -92,148 +95,196 @@ export default function Dashboard() {
     }
   }, []);
 
-  const handleLogout = async () => {
+  const fetchDashboardStats = async () => {
     try {
-      const res = await fetch('/api/auth/logout', { method: 'POST' });
-      if (res.ok) {
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
-        router.push('/login');
+      setLoading(prev => ({ ...prev, stats: true }));
+      setError(prev => ({ ...prev, stats: null }));
+
+      const response = await fetch(`/api/dashboard/stats?period=${selectedPeriod}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard stats');
       }
-    } catch (error) {
-      console.error('Logout error:', error);
+
+      const data = await response.json();
+      setDashboardStats(data);
+    } catch (err) {
+      setError(prev => ({ ...prev, stats: err instanceof Error ? err.message : 'Failed to load dashboard stats' }));
+    } finally {
+      setLoading(prev => ({ ...prev, stats: false }));
     }
   };
 
+  useEffect(() => {
+    fetchDashboardStats();
+  }, [selectedPeriod]);
+
+  const handlePeriodChange = (period: string) => {
+    setSelectedPeriod(period);
+  };
+
+  // Create stats array from dashboardStats
+  const stats = dashboardStats ? [
+    {
+      name: 'Total Revenue',
+      value: dashboardStats.totalRevenue.value,
+      change: dashboardStats.totalRevenue.change,
+      trend: dashboardStats.totalRevenue.trend,
+      icon: CurrencyDollarIcon
+    },
+    {
+      name: 'Total Orders',
+      value: dashboardStats.totalOrders.value,
+      change: dashboardStats.totalOrders.change,
+      trend: dashboardStats.totalOrders.trend,
+      icon: ShoppingBagIcon
+    },
+    {
+      name: 'Total Customers',
+      value: dashboardStats.totalCustomers.value,
+      change: dashboardStats.totalCustomers.change,
+      trend: dashboardStats.totalCustomers.trend,
+      icon: UserGroupIcon
+    },
+    {
+      name: 'Conversion Rate',
+      value: dashboardStats.conversionRate.value,
+      change: dashboardStats.conversionRate.change,
+      trend: dashboardStats.conversionRate.trend,
+      icon: ChartBarIcon
+    },
+  ] : [];
+
+  const recentOrders = dashboardStats?.recentOrders || [];
+  const topProducts = dashboardStats?.topProducts || [];
+
+  // Format currency for top products
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50">
-      {/* Enhanced Header */}
-      <header className="bg-white/70 backdrop-blur-xl shadow-2xl shadow-black/5 border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+    <DashboardLayout>
+      {/* Top Controls */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div className="flex items-center gap-4">
+          {/* View Store Button */}
+          {userStore && (
+            <Link
+              href={`/store/${userStore.subdomain || 'toko-praz'}`}
+              target="_blank"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <GlobeAltIcon className="h-5 w-5" />
+              <span>Lihat Toko</span>
+            </Link>
+          )}
+        </div>
+
+        {/* Period Selector */}
+        <select
+          value={selectedPeriod}
+          onChange={(e) => handlePeriodChange(e.target.value)}
+          className="border-gray-300 rounded-md text-sm px-3 py-2 bg-white shadow-sm"
+          disabled={loading.stats}
+        >
+          <option value="today">Today</option>
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
+          <option value="year">This Year</option>
+        </select>
+      </div>
+        {/* Enhanced Stats Grid */}
+        {error.stats ? (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
             <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              {/* View Store Button */}
-              {userStore && (
-                <Link
-                  href={`/store/${userStore.subdomain || 'toko-praz'}`}
-                  target="_blank"
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <GlobeAltIcon className="h-5 w-5" />
-                  <span>Lihat Toko</span>
-                </Link>
-              )}
-
-              {/* Period Selector */}
-              <select
-                value={selectedPeriod}
-                onChange={(e) => setSelectedPeriod(e.target.value)}
-                className="border-gray-300 rounded-md text-sm"
-              >
-                <option value="today">Today</option>
-                <option value="week">This Week</option>
-                <option value="month">This Month</option>
-                <option value="year">This Year</option>
-              </select>
-
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              >
-                <ArrowRightOnRectangleIcon className="h-5 w-5" />
-                <span>Logout</span>
-              </button>
-
-              {/* Notifications */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className="p-2 text-gray-400 hover:text-gray-500 relative"
-                >
-                  <BellIcon className="h-6 w-6" />
-                  <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
-                </button>
-
-                {showNotifications && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg z-50">
-                    <div className="p-4">
-                      <h3 className="text-sm font-semibold text-gray-900 mb-2">Notifications</h3>
-                      <div className="space-y-2">
-                        {notifications.map((notif) => (
-                          <div key={notif.id} className="flex items-start space-x-2 text-sm">
-                            <div className={`w-2 h-2 rounded-full mt-1.5 ${
-                              notif.type === 'warning' ? 'bg-yellow-400' :
-                              notif.type === 'success' ? 'bg-green-400' : 'bg-blue-400'
-                            }`}></div>
-                            <div className="flex-1">
-                              <p className="text-gray-900">{notif.message}</p>
-                              <p className="text-gray-500 text-xs">{notif.time}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
+              <ExclamationTriangleIcon className="h-5 w-5 text-red-400 mr-2" />
+              <div>
+                <h3 className="text-sm font-medium text-red-800">Error loading statistics</h3>
+                <p className="text-sm text-red-600">{error.stats}</p>
               </div>
-
-              {/* Settings */}
-              <Link href="/dashboard/settings" className="p-2 text-gray-400 hover:text-gray-500">
-                <Cog6ToothIcon className="h-6 w-6" />
-              </Link>
+              <button
+                onClick={fetchDashboardStats}
+                className="ml-auto px-3 py-2 text-sm text-red-700 bg-red-100 rounded-md hover:bg-red-200"
+              >
+                Retry
+              </button>
             </div>
           </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Enhanced Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => (
-            <motion.div
-              key={stat.name}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1, duration: 0.6 }}
-              whileHover={{ y: -8, scale: 1.02 }}
-              className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl shadow-gray-500/10 hover:shadow-2xl hover:shadow-blue-500/20 transition-all duration-500 p-6 border border-white/20"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-2xl ${
-                  stat.name.includes('Revenue') ? 'bg-gradient-to-br from-green-100 to-green-200' :
-                  stat.name.includes('Orders') ? 'bg-gradient-to-br from-blue-100 to-blue-200' :
-                  stat.name.includes('Customers') ? 'bg-gradient-to-br from-purple-100 to-purple-200' :
-                  'bg-gradient-to-br from-yellow-100 to-yellow-200'
-                }`}>
-                  <stat.icon className={`h-7 w-7 ${
-                    stat.name.includes('Revenue') ? 'text-green-600' :
-                    stat.name.includes('Orders') ? 'text-blue-600' :
-                    stat.name.includes('Customers') ? 'text-purple-600' :
-                    'text-yellow-600'
-                  }`} />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {loading.stats ? (
+              // Loading skeleton
+              Array.from({ length: 4 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl shadow-gray-500/10 p-6 border border-white/20 animate-pulse"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 rounded-2xl bg-gray-200 w-16 h-16"></div>
+                    <div className="px-2 py-1 rounded-full bg-gray-200 w-16 h-6"></div>
+                  </div>
+                  <div>
+                    <div className="h-8 bg-gray-200 rounded mb-2 w-20"></div>
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                  </div>
                 </div>
-                <div className={`flex items-center text-sm font-medium px-2 py-1 rounded-full ${
-                  stat.trend === 'up' ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
-                }`}>
-                  {stat.trend === 'up' ? (
-                    <ArrowUpIcon className="h-4 w-4 mr-1" />
-                  ) : (
-                    <ArrowDownIcon className="h-4 w-4 mr-1" />
-                  )}
-                  {stat.change}
-                </div>
-              </div>
-              <div>
-                <p className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-1">{stat.value}</p>
-                <p className="text-sm text-gray-600 font-medium">{stat.name}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              ))
+            ) : (
+              stats.map((stat, index) => (
+                <motion.div
+                  key={stat.name}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1, duration: 0.6 }}
+                  whileHover={{ y: -8, scale: 1.02 }}
+                  className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl shadow-gray-500/10 hover:shadow-2xl hover:shadow-blue-500/20 transition-all duration-500 p-6 border border-white/20"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={`p-3 rounded-2xl ${
+                      stat.name.includes('Revenue') ? 'bg-gradient-to-br from-green-100 to-green-200' :
+                      stat.name.includes('Orders') ? 'bg-gradient-to-br from-blue-100 to-blue-200' :
+                      stat.name.includes('Customers') ? 'bg-gradient-to-br from-purple-100 to-purple-200' :
+                      'bg-gradient-to-br from-yellow-100 to-yellow-200'
+                    }`}>
+                      <stat.icon className={`h-7 w-7 ${
+                        stat.name.includes('Revenue') ? 'text-green-600' :
+                        stat.name.includes('Orders') ? 'text-blue-600' :
+                        stat.name.includes('Customers') ? 'text-purple-600' :
+                        'text-yellow-600'
+                      }`} />
+                    </div>
+                    <div className={`flex items-center text-sm font-medium px-2 py-1 rounded-full ${
+                      stat.trend === 'up' ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
+                    }`}>
+                      {stat.trend === 'up' ? (
+                        <ArrowUpIcon className="h-4 w-4 mr-1" />
+                      ) : (
+                        <ArrowDownIcon className="h-4 w-4 mr-1" />
+                      )}
+                      {stat.change}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-1">{stat.value}</p>
+                    <p className="text-sm text-gray-600 font-medium">{stat.name}</p>
+                  </div>
+                </motion.div>
+              ))
+            )}
+          </div>
+        )}
 
         {/* Enhanced Charts and Tables */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
@@ -307,29 +358,56 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {recentOrders.map((order) => (
-                    <tr key={order.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {order.id}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {order.customer}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {order.total}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                          order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
-                          order.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {order.status}
-                        </span>
+                  {loading.stats ? (
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <tr key={index} className="animate-pulse">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="h-4 bg-gray-200 rounded w-20"></div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="h-4 bg-gray-200 rounded w-24"></div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="h-4 bg-gray-200 rounded w-20"></div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="h-6 bg-gray-200 rounded-full w-16"></div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : recentOrders.length > 0 ? (
+                    recentOrders.map((order) => (
+                      <tr key={order.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {order.id}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {order.customer}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {order.total}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                            order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
+                            order.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                            order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                            order.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {order.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                        No recent orders found
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
@@ -364,27 +442,52 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {topProducts.map((product) => (
-                    <tr key={product.name} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {product.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {product.sold}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {product.revenue}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`text-sm ${
-                          product.stock < 10 ? 'text-red-600 font-semibold' : 'text-gray-500'
-                        }`}>
-                          {product.stock}
-                          {product.stock < 10 && ' (Low)'}
-                        </span>
+                  {loading.stats ? (
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <tr key={index} className="animate-pulse">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="h-4 bg-gray-200 rounded w-32"></div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="h-4 bg-gray-200 rounded w-8"></div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="h-4 bg-gray-200 rounded w-20"></div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="h-4 bg-gray-200 rounded w-12"></div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : topProducts.length > 0 ? (
+                    topProducts.map((product) => (
+                      <tr key={product.name} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {product.name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {product.sold}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {formatCurrency(product.revenue)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`text-sm ${
+                            product.stock < 10 ? 'text-red-600 font-semibold' : 'text-gray-500'
+                          }`}>
+                            {product.stock}
+                            {product.stock < 10 && ' (Low)'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                        No products data available
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
@@ -419,17 +522,16 @@ export default function Dashboard() {
                 <span className="text-sm font-medium">Analytics</span>
               </div>
             </Link>
-            <Link href="/dashboard/messages" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-center">
+            <Link href="/dashboard/customers" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-center">
               <div className="text-gray-600">
                 <svg className="mx-auto h-8 w-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
-                <span className="text-sm font-medium">Messages</span>
+                <span className="text-sm font-medium">Customers</span>
               </div>
             </Link>
           </div>
         </div>
-      </main>
-    </div>
+    </DashboardLayout>
   );
 }

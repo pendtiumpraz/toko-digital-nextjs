@@ -10,6 +10,7 @@ import {
   ChartBarIcon,
   PlusIcon
 } from '@heroicons/react/24/outline'
+import DashboardLayout from '@/components/layout/DashboardLayout'
 
 interface FinancialStats {
   thisMonth: {
@@ -144,7 +145,8 @@ export default function FinancialDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50">
+    <DashboardLayout>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50">
       {/* Enhanced Header */}
       <div className="bg-white/70 backdrop-blur-xl shadow-2xl shadow-black/5 border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -370,6 +372,7 @@ export default function FinancialDashboard() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </DashboardLayout>
   )
 }

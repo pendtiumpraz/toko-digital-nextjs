@@ -12,6 +12,7 @@ import {
   CalendarIcon,
   FunnelIcon
 } from '@heroicons/react/24/outline';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 
 export default function AnalyticsPage() {
   const [dateRange, setDateRange] = useState('month');
@@ -59,7 +60,8 @@ export default function AnalyticsPage() {
   ];
 
   return (
-    <div className="p-6">
+    <DashboardLayout>
+      <div className="p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -393,6 +395,7 @@ export default function AnalyticsPage() {
           Schedule Report
         </button>
       </div>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

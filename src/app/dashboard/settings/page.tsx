@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   UserCircleIcon,
   BuildingStorefrontIcon,
@@ -13,10 +13,12 @@ import {
   DocumentTextIcon,
   KeyIcon
 } from '@heroicons/react/24/outline';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile');
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Form states
   const [profile, setProfile] = useState({
@@ -61,13 +63,152 @@ export default function SettingsPage() {
     whatsappPayment: true
   });
 
+  const [whatsappSettings, setWhatsappSettings] = useState({
+    phoneNumber: '+62 812 3456 7890',
+    businessName: 'John Store',
+    isEnabled: true,
+    greetingMessage: 'Hi! Welcome to our store. How can we help you today?',
+    orderConfirmationTemplate: 'Thank you for your order! We have received your order #[ORDER_ID] and will process it shortly.',
+    awayMessage: 'Thanks for your message! We will get back to you as soon as possible.',
+    businessHours: {
+      enabled: false,
+      start: '09:00',
+      end: '17:00',
+      timezone: 'Asia/Jakarta'
+    }
+  });
+
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [successMessage, setSuccessMessage] = useState('');
+
+  // Load WhatsApp settings when tab is selected
+  useEffect(() => {
+    if (activeTab === 'whatsapp') {
+      loadWhatsAppSettings();
+    }
+  }, [activeTab]);
+
+  const loadWhatsAppSettings = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/settings/whatsapp');
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          setWhatsappSettings(result.data);
+        }
+      } else {
+        console.error('Failed to load WhatsApp settings');
+      }
+    } catch (error) {
+      console.error('Error loading WhatsApp settings:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const clearMessages = () => {
+    setErrors({});
+    setSuccessMessage('');
+  };
+
+  const validatePhoneNumber = (phone: string): boolean => {
+    // Remove all non-digit characters
+    const cleaned = phone.replace(/\D/g, '');
+    // Check if it starts with 62 (Indonesia country code)
+    return cleaned.startsWith('62') && cleaned.length >= 10 && cleaned.length <= 15;
+  };
+
+  const validateWhatsAppSettings = (): boolean => {
+    const newErrors: { [key: string]: string } = {};
+
+    if (!whatsappSettings.phoneNumber.trim()) {
+      newErrors.phoneNumber = 'Phone number is required';
+    } else if (!validatePhoneNumber(whatsappSettings.phoneNumber)) {
+      newErrors.phoneNumber = 'Phone number must start with 62 (Indonesia) and be 10-15 digits';
+    }
+
+    if (!whatsappSettings.businessName.trim()) {
+      newErrors.businessName = 'Business name is required';
+    }
+
+    if (!whatsappSettings.greetingMessage.trim()) {
+      newErrors.greetingMessage = 'Greeting message is required';
+    }
+
+    if (!whatsappSettings.orderConfirmationTemplate.trim()) {
+      newErrors.orderConfirmationTemplate = 'Order confirmation template is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
-    // Simulate API call
-    setTimeout(() => {
+    setErrors({});
+    setSuccessMessage('');
+
+    try {
+      // Validate WhatsApp settings if on WhatsApp tab
+      if (activeTab === 'whatsapp' && !validateWhatsAppSettings()) {
+        setIsSaving(false);
+        return;
+      }
+
+      // Prepare data based on active tab
+      let endpoint = '';
+      let data = {};
+
+      switch (activeTab) {
+        case 'profile':
+          endpoint = '/api/settings/profile';
+          data = profile;
+          break;
+        case 'store':
+          endpoint = '/api/settings/store';
+          data = store;
+          break;
+        case 'notifications':
+          endpoint = '/api/settings/notifications';
+          data = notifications;
+          break;
+        case 'whatsapp':
+          endpoint = '/api/settings/whatsapp';
+          data = whatsappSettings;
+          break;
+        default:
+          setIsSaving(false);
+          alert('Settings saved successfully!');
+          return;
+      }
+
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save settings');
+      }
+
+      const result = await response.json();
+      setSuccessMessage('Settings saved successfully!');
+
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+    } catch (error) {
+      console.error('Save error:', error);
+      alert(error instanceof Error ? error.message : 'Failed to save settings');
+    } finally {
       setIsSaving(false);
-      alert('Settings saved successfully!');
-    }, 1000);
+    }
   };
 
   const tabs = [
@@ -636,69 +777,250 @@ export default function SettingsPage() {
         );
 
       case 'whatsapp':
+        if (isLoading) {
+          return (
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold">WhatsApp Integration</h2>
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="ml-2 text-gray-600">Loading WhatsApp settings...</span>
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div className="space-y-6">
             <h2 className="text-xl font-semibold">WhatsApp Integration</h2>
 
+            {successMessage && (
+              <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+                {successMessage}
+              </div>
+            )}
+
+            <div className="bg-green-50 p-4 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium text-green-900">WhatsApp Integration Status</h3>
+                  <p className="text-sm text-green-700">
+                    {whatsappSettings.isEnabled ? 'Active' : 'Inactive'}
+                  </p>
+                </div>
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 text-green-600 rounded focus:ring-green-500"
+                    checked={whatsappSettings.isEnabled}
+                    onChange={(e) => {
+                      clearMessages();
+                      setWhatsappSettings({
+                        ...whatsappSettings,
+                        isEnabled: e.target.checked
+                      });
+                    }}
+                  />
+                  <span className="ml-2 text-sm text-green-900">Enable WhatsApp Integration</span>
+                </label>
+              </div>
+            </div>
+
             <div>
-              <h3 className="text-lg font-medium mb-4">WhatsApp Business</h3>
+              <h3 className="text-lg font-medium mb-4">Business Information</h3>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    WhatsApp Business Number
+                    Business Name *
+                  </label>
+                  <input
+                    type="text"
+                    className={`w-full max-w-md px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.businessName ? 'border-red-500' : ''
+                    }`}
+                    placeholder="Your Business Name"
+                    value={whatsappSettings.businessName}
+                    onChange={(e) => {
+                      clearMessages();
+                      setWhatsappSettings({
+                        ...whatsappSettings,
+                        businessName: e.target.value
+                      });
+                    }}
+                  />
+                  {errors.businessName && (
+                    <p className="text-red-500 text-sm mt-1">{errors.businessName}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    WhatsApp Business Number *
                   </label>
                   <input
                     type="tel"
-                    className="w-full max-w-md px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full max-w-md px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.phoneNumber ? 'border-red-500' : ''
+                    }`}
                     placeholder="+62 812 3456 7890"
-                    value={store.whatsappNumber}
-                    onChange={(e) => setStore({ ...store, whatsappNumber: e.target.value })}
+                    value={whatsappSettings.phoneNumber}
+                    onChange={(e) => {
+                      clearMessages();
+                      setWhatsappSettings({
+                        ...whatsappSettings,
+                        phoneNumber: e.target.value
+                      });
+                    }}
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Welcome Message Template
-                  </label>
-                  <textarea
-                    className="w-full max-w-lg px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows={4}
-                    placeholder="Hi! Welcome to our store. How can we help you today?"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Order Confirmation Template
-                  </label>
-                  <textarea
-                    className="w-full max-w-lg px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows={4}
-                    placeholder="Thank you for your order! We have received your order #[ORDER_ID]..."
-                  />
+                  {errors.phoneNumber && (
+                    <p className="text-red-500 text-sm mt-1">{errors.phoneNumber}</p>
+                  )}
+                  <p className="text-gray-500 text-xs mt-1">
+                    Must start with 62 (Indonesia country code). Example: +62 812 3456 7890
+                  </p>
                 </div>
               </div>
             </div>
 
             <div>
-              <h3 className="text-lg font-medium mb-4">Quick Replies</h3>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="text"
-                    className="flex-1 max-w-md px-4 py-2 border rounded-lg"
-                    placeholder="Shortcut"
+              <h3 className="text-lg font-medium mb-4">Automated Messages</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Greeting Message *
+                  </label>
+                  <textarea
+                    className={`w-full max-w-lg px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.greetingMessage ? 'border-red-500' : ''
+                    }`}
+                    rows={3}
+                    placeholder="Hi! Welcome to our store. How can we help you today?"
+                    value={whatsappSettings.greetingMessage}
+                    onChange={(e) => setWhatsappSettings({
+                      ...whatsappSettings,
+                      greetingMessage: e.target.value
+                    })}
                   />
-                  <input
-                    type="text"
-                    className="flex-1 max-w-md px-4 py-2 border rounded-lg"
-                    placeholder="Message"
+                  {errors.greetingMessage && (
+                    <p className="text-red-500 text-sm mt-1">{errors.greetingMessage}</p>
+                  )}
+                  <p className="text-gray-500 text-xs mt-1">
+                    This message will be sent when customers first contact you
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Order Confirmation Template *
+                  </label>
+                  <textarea
+                    className={`w-full max-w-lg px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.orderConfirmationTemplate ? 'border-red-500' : ''
+                    }`}
+                    rows={4}
+                    placeholder="Thank you for your order! We have received your order #[ORDER_ID]..."
+                    value={whatsappSettings.orderConfirmationTemplate}
+                    onChange={(e) => setWhatsappSettings({
+                      ...whatsappSettings,
+                      orderConfirmationTemplate: e.target.value
+                    })}
                   />
-                  <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                    Add
-                  </button>
+                  {errors.orderConfirmationTemplate && (
+                    <p className="text-red-500 text-sm mt-1">{errors.orderConfirmationTemplate}</p>
+                  )}
+                  <p className="text-gray-500 text-xs mt-1">
+                    Use [ORDER_ID], [CUSTOMER_NAME], [TOTAL] as placeholders
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Away Message
+                  </label>
+                  <textarea
+                    className="w-full max-w-lg px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows={2}
+                    placeholder="Thanks for your message! We will get back to you as soon as possible."
+                    value={whatsappSettings.awayMessage}
+                    onChange={(e) => setWhatsappSettings({
+                      ...whatsappSettings,
+                      awayMessage: e.target.value
+                    })}
+                  />
+                  <p className="text-gray-500 text-xs mt-1">
+                    Sent when you're not available during business hours
+                  </p>
                 </div>
               </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-medium mb-4">Business Hours</h3>
+              <div className="space-y-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                    checked={whatsappSettings.businessHours.enabled}
+                    onChange={(e) => setWhatsappSettings({
+                      ...whatsappSettings,
+                      businessHours: {
+                        ...whatsappSettings.businessHours,
+                        enabled: e.target.checked
+                      }
+                    })}
+                  />
+                  <span className="ml-2 text-sm">Enable business hours</span>
+                </label>
+
+                {whatsappSettings.businessHours.enabled && (
+                  <div className="grid grid-cols-2 gap-4 max-w-md">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Start Time
+                      </label>
+                      <input
+                        type="time"
+                        className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={whatsappSettings.businessHours.start}
+                        onChange={(e) => setWhatsappSettings({
+                          ...whatsappSettings,
+                          businessHours: {
+                            ...whatsappSettings.businessHours,
+                            start: e.target.value
+                          }
+                        })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        End Time
+                      </label>
+                      <input
+                        type="time"
+                        className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={whatsappSettings.businessHours.end}
+                        onChange={(e) => setWhatsappSettings({
+                          ...whatsappSettings,
+                          businessHours: {
+                            ...whatsappSettings.businessHours,
+                            end: e.target.value
+                          }
+                        })}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h4 className="font-medium text-blue-900 mb-2">Integration Instructions</h4>
+              <ol className="text-sm text-blue-700 space-y-1">
+                <li>1. Make sure your WhatsApp Business account is active</li>
+                <li>2. Add the phone number above to your WhatsApp Business profile</li>
+                <li>3. Test the integration by sending a message to your business number</li>
+                <li>4. Customers can now contact you directly through WhatsApp</li>
+              </ol>
             </div>
           </div>
         );
@@ -771,7 +1093,8 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="p-6">
+    <DashboardLayout>
+      <div className="p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
         <p className="text-gray-600 mt-1">Manage your account and store preferences</p>
@@ -822,6 +1145,7 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

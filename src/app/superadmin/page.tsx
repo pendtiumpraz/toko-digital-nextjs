@@ -12,6 +12,7 @@ import {
   CheckCircleIcon,
   XCircleIcon
 } from '@heroicons/react/24/outline'
+import AdminLayout from '@/components/layout/AdminLayout'
 
 interface DashboardStats {
   users: {
@@ -156,34 +157,8 @@ export default function SuperAdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Super Admin Dashboard</h1>
-              <p className="text-gray-600">System overview and management</p>
-            </div>
-            <div className="flex space-x-4">
-              <button
-                onClick={() => router.push('/superadmin/users')}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-              >
-                Manage Users
-              </button>
-              <button
-                onClick={() => router.push('/superadmin/activities')}
-                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
-              >
-                View Activities
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <AdminLayout role="SUPER_ADMIN">
+      <div className="space-y-6">
         {/* System Health Status */}
         {systemHealth && (
           <div className="mb-8">
@@ -393,6 +368,6 @@ export default function SuperAdminDashboard() {
           </div>
         </div>
       </div>
-    </div>
+    </AdminLayout>
   )
 }

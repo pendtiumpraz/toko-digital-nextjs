@@ -13,6 +13,7 @@ import {
   CommandLineIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
+import AdminLayout from '@/components/layout/AdminLayout';
 
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -399,77 +400,38 @@ export default function AdminPanel() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <div className="bg-white shadow-sm">
-        <div className="px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
-            <div className="flex items-center space-x-4">
-              <button className="p-2 text-gray-500 hover:text-gray-700">
-                <BellIcon className="h-5 w-5" />
+    <AdminLayout role="ADMIN">
+      {/* Tab Navigation */}
+      <div className="mb-6">
+        <nav className="flex space-x-8">
+          {[
+            { id: 'overview', label: 'Overview', icon: ChartBarIcon },
+            { id: 'users', label: 'Users', icon: UsersIcon },
+            { id: 'stores', label: 'Stores', icon: BuildingStorefrontIcon },
+            { id: 'billing', label: 'Billing', icon: CreditCardIcon },
+            { id: 'settings', label: 'Settings', icon: CogIcon }
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+                  activeTab === item.id
+                    ? 'bg-blue-50 text-blue-600 border border-blue-200'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                <span className="font-medium">{item.label}</span>
               </button>
-              <div className="flex items-center space-x-2">
-                <div className="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-semibold">A</span>
-                </div>
-                <span className="text-sm font-medium">Admin</span>
-              </div>
-            </div>
-          </div>
-        </div>
+            );
+          })}
+        </nav>
       </div>
 
-      <div className="flex">
-        {/* Sidebar */}
-        <div className="w-64 bg-white shadow-md h-screen sticky top-0">
-          <nav className="p-4 space-y-1">
-            {[
-              { id: 'overview', label: 'Overview', icon: ChartBarIcon },
-              { id: 'users', label: 'Users', icon: UsersIcon },
-              { id: 'stores', label: 'Stores', icon: BuildingStorefrontIcon },
-              { id: 'billing', label: 'Billing', icon: CreditCardIcon },
-              { id: 'settings', label: 'Settings', icon: CogIcon }
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                    activeTab === item.id
-                      ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
-                      : 'text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span className="font-medium">{item.label}</span>
-                </button>
-              );
-            })}
-
-            <div className="pt-4 mt-4 border-t">
-              <button className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50">
-                <ShieldCheckIcon className="h-5 w-5" />
-                <span className="font-medium">Security</span>
-              </button>
-              <button className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50">
-                <DocumentTextIcon className="h-5 w-5" />
-                <span className="font-medium">Logs</span>
-              </button>
-              <button className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50">
-                <CommandLineIcon className="h-5 w-5" />
-                <span className="font-medium">API</span>
-              </button>
-            </div>
-          </nav>
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 p-8">
-          {renderContent()}
-        </div>
-      </div>
-    </div>
+      {/* Content */}
+      {renderContent()}
+    </AdminLayout>
   );
 }

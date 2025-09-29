@@ -97,12 +97,14 @@ model Store {
   // Relations
   products      Product[]
   orders        Order[]
+  customers     Customer[]
   chats         Chat[]
   subscription  Subscription?
   financialTransactions FinancialTransaction[] @relation("StoreFinancials")
   recurringTransactions RecurringTransaction[] @relation("StoreRecurringTransactions")
   analytics     StoreAnalytics[] @relation("StoreAnalytics")
   notifications SystemNotification[] @relation("StoreNotifications")
+  whatsappSettings WhatsAppSettings?
 
   @@index([subdomain])
   @@index([customDomain])
@@ -214,7 +216,11 @@ model Order {
   store         Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
   orderNumber   String    @unique @default(cuid())
 
-  // Customer info
+  // Customer relation
+  customerId    String?
+  customer      Customer? @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: SetNull)
+
+  // Customer info (for backward compatibility and guest orders)
   customerName  String
   customerEmail String?
   customerPhone String
@@ -369,6 +375,52 @@ model ChatMessage {
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+// Customer model
+model Customer {
+  id            String    @id @default(cuid())
+  storeId       String
+  store         Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  // Basic info
+  name          String
+  email         String?
+  phone         String
+  whatsappNumber String?
+
+  // Address
+  street        String?
+  city          String?
+  state         String?
+  country       String?
+  postalCode    String?
+
+  // Additional info
+  birthDate     DateTime?
+  gender        Gender?
+  notes         String?
+
+  // Status
+  status        CustomerStatus @default(ACTIVE)
+  tags          String[]  // For custom categorization
+
+  // Analytics
+  totalOrders   Int       @default(0)
+  totalSpent    Decimal   @default(0)
+  lastOrderDate DateTime?
+  firstOrderDate DateTime?
+  averageOrderValue Decimal @default(0)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  orders        Order[]   @relation("CustomerOrders")
+
+  @@unique([storeId, phone])
+  @@index([storeId, status])
+  @@index([storeId, email])
 }
 
 // ENUMS
@@ -723,6 +775,8 @@ enum AdminAction {
   USER_DELETED
   TRIAL_EXTENDED
   TRIAL_ENDED
+  TRIAL_CONVERTED
+  TRIAL_REMINDER_SENT
   SUBSCRIPTION_ACTIVATED
   SUBSCRIPTION_CANCELLED
   STORE_VERIFIED
@@ -751,4 +805,48 @@ enum NotificationType {
   SYSTEM_MAINTENANCE
   FEATURE_ANNOUNCEMENT
   GENERAL
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+// WhatsApp Settings model
+model WhatsAppSettings {
+  id            String    @id @default(cuid())
+  storeId       String    @unique
+  store         Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  // Basic settings
+  isEnabled     Boolean   @default(true)
+  phoneNumber   String
+  businessName  String
+
+  // Message templates
+  greetingMessage           String    @default("Hi! Welcome to our store. How can we help you today?")
+  orderConfirmationTemplate String    @default("Thank you for your order! We have received your order #[ORDER_ID] and will process it shortly.")
+  awayMessage              String    @default("Thanks for your message! We will get back to you as soon as possible.")
+
+  // Business hours
+  businessHoursEnabled Boolean   @default(false)
+  businessHoursStart   String?   // Format: "HH:MM"
+  businessHoursEnd     String?   // Format: "HH:MM"
+  businessHoursTimezone String   @default("Asia/Jakarta")
+
+  // Auto-reply settings
+  autoReplyEnabled Boolean   @default(false)
+  welcomeMessageEnabled Boolean @default(true)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([storeId])
 }
