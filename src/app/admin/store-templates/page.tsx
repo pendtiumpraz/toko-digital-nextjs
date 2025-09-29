@@ -307,7 +307,7 @@ export default function StoreTemplatesPage() {
     { id: 'modern', name: 'Modern', icon: ComputerDesktopIcon },
     { id: 'classic', name: 'Classic', icon: SparklesIcon },
     { id: 'minimal', name: 'Minimal', icon: Squares2X2Icon },
-    { id: 'bold', name: 'Bold', icon: ColorSwatchIcon },
+    { id: 'bold', name: 'Bold', icon: SwatchIcon },
     { id: 'elegant', name: 'Elegant', icon: StarSolidIcon }
   ];
 
