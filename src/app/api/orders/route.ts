@@ -202,18 +202,28 @@ export async function POST(request: NextRequest) {
     // Generate unique order number
     const orderNumber = `ORD-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
 
+    // Define interface for order items
+    interface OrderItemInput {
+      productId: string;
+      name?: string;
+      price: number;
+      cost?: number;
+      quantity: number;
+      variant?: string;
+    }
+
     // Calculate totals if not provided
     let calculatedSubtotal = subtotal;
     let calculatedTotal = total;
     let totalCost = 0;
 
     if (!calculatedSubtotal || !calculatedTotal) {
-      calculatedSubtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+      calculatedSubtotal = items.reduce((sum: number, item: OrderItemInput) => sum + (item.price * item.quantity), 0);
       calculatedTotal = calculatedSubtotal + shipping + tax - discount;
     }
 
     // Calculate total cost for profit tracking
-    totalCost = items.reduce((sum: number, item: any) => sum + ((item.cost || 0) * item.quantity), 0);
+    totalCost = items.reduce((sum: number, item: OrderItemInput) => sum + ((item.cost || 0) * item.quantity), 0);
     const totalProfit = calculatedTotal - totalCost - shipping;
 
     // Create order in transaction
@@ -267,7 +277,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Create order items
-      for (const item of items) {
+      for (const item of items as OrderItemInput[]) {
         // Verify product exists
         const product = await tx.product.findUnique({
           where: { id: item.productId }
@@ -415,7 +425,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const updates: any = { ...updateData };
+    const updates: Partial<typeof existingOrder> = { ...updateData };
 
     // Handle status updates
     if (status && status !== existingOrder.status) {

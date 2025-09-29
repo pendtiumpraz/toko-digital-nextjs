@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import {
   ShoppingCartIcon,
@@ -91,9 +92,11 @@ export default function ProductCard({
       onHoverEnd={() => setIsHovered(false)}
     >
       <div className="relative aspect-square overflow-hidden rounded-t-lg">
-        <img
+        <Image
           src={product.images[currentImageIndex]}
           alt={product.name}
+          width={300}
+          height={300}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
 
@@ -162,9 +165,11 @@ export default function ProductCard({
       <div className="relative">
         {/* Image Gallery */}
         <div className="relative aspect-[4/3] overflow-hidden">
-          <img
+          <Image
             src={product.images[currentImageIndex]}
             alt={product.name}
+            width={400}
+            height={300}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
 

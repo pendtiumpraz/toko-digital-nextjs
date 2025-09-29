@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import {
   PlusCircleIcon,
   PencilIcon,
@@ -570,9 +571,11 @@ export default function ProductsPage() {
                       </div>
                       <div className="flex items-center justify-center h-full">
                         {product.images && product.images.length > 0 ? (
-                          <img
+                          <Image
                             src={product.images[0].url}
                             alt={product.name}
+                            width={300}
+                            height={200}
                             className="w-full h-full object-cover"
                             onError={(e) => {
                               (e.target as HTMLImageElement).src = '/placeholder.jpg';

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import {
   ArrowUpIcon,
@@ -65,9 +65,9 @@ export default function FinancialDashboard() {
 
   useEffect(() => {
     fetchFinancialData()
-  }, [])
+  }, [fetchFinancialData])
 
-  const fetchFinancialData = async () => {
+  const fetchFinancialData = useCallback(async () => {
     try {
       const token = localStorage.getItem('auth_token')
       if (!token) {
@@ -92,7 +92,7 @@ export default function FinancialDashboard() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {

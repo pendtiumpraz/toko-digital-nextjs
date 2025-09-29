@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withTenantIsolation } from '@/lib/tenant'
-import { createTransaction, getTransactions, updateTransaction, deleteTransaction } from '@/lib/financial'
+import { createTransaction, getTransactions } from '@/lib/financial'
 import { TransactionType, TransactionCategory } from '@prisma/client'
 
 /**

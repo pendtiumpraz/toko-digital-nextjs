@@ -1,13 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   UsersIcon,
   BuildingStorefrontIcon,
   ClockIcon,
   CreditCardIcon,
-  ChartBarIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
   XCircleIcon
@@ -59,9 +58,9 @@ export default function SuperAdminDashboard() {
 
   useEffect(() => {
     fetchDashboardData()
-  }, [])
+  }, [fetchDashboardData])
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       const token = localStorage.getItem('auth_token')
       if (!token) {
@@ -98,7 +97,7 @@ export default function SuperAdminDashboard() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [router])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {

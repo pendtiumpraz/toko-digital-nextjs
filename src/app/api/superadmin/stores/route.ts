@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 import { logAdminActivity } from '@/lib/admin';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 /**
  * GET /api/superadmin/stores - Get all stores with filters and pagination
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     // Build where clause
-    const where: any = {};
+    const where: Prisma.StoreWhereInput = {};
 
     if (search) {
       where.OR = [
@@ -314,7 +315,7 @@ async function activateStore(
 
     await logAdminActivity(
       adminId,
-      'STORE_ACTIVATED' as any,
+      'STORE_ACTIVATED',
       'store',
       storeId,
       `Activated store: ${store.name} (Owner: ${store.owner.name})`,
@@ -371,7 +372,7 @@ async function deactivateStore(
 
     await logAdminActivity(
       adminId,
-      'STORE_DEACTIVATED' as any,
+      'STORE_DEACTIVATED',
       'store',
       storeId,
       `Deactivated store: ${store.name} (Owner: ${store.owner.name})${reason ? `. Reason: ${reason}` : ''}`,
@@ -428,7 +429,7 @@ async function verifyStore(
 
     await logAdminActivity(
       adminId,
-      'STORE_VERIFIED' as any,
+      'STORE_VERIFIED',
       'store',
       storeId,
       `Verified store: ${store.name} (Owner: ${store.owner.name})`,
@@ -485,7 +486,7 @@ async function unverifyStore(
 
     await logAdminActivity(
       adminId,
-      'STORE_UNVERIFIED' as any,
+      'STORE_UNVERIFIED',
       'store',
       storeId,
       `Unverified store: ${store.name} (Owner: ${store.owner.name})${reason ? `. Reason: ${reason}` : ''}`,
@@ -514,7 +515,7 @@ async function unverifyStore(
 async function updateStoreSettings(
   adminId: string,
   storeId: string,
-  settings: any,
+  settings: Record<string, unknown>,
   ipAddress?: string,
   userAgent?: string
 ): Promise<{ success: boolean; message: string }> {
@@ -533,7 +534,7 @@ async function updateStoreSettings(
     }
 
     // Update store settings
-    const updateData: any = { updatedAt: new Date() };
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
 
     if (settings.name) updateData.name = settings.name;
     if (settings.description) updateData.description = settings.description;
@@ -547,7 +548,7 @@ async function updateStoreSettings(
 
     await logAdminActivity(
       adminId,
-      'STORE_UPDATED' as any,
+      'STORE_UPDATED',
       'store',
       storeId,
       `Updated settings for store: ${store.name} (Owner: ${store.owner.name})`,
@@ -600,7 +601,7 @@ async function resetStoreStorage(
 
     await logAdminActivity(
       adminId,
-      'STORE_STORAGE_RESET' as any,
+      'STORE_STORAGE_RESET',
       'store',
       storeId,
       `Reset storage for store: ${store.name} (Owner: ${store.owner.name})`,
@@ -658,7 +659,7 @@ async function suspendStore(
 
     await logAdminActivity(
       adminId,
-      'STORE_SUSPENDED' as any,
+      'STORE_SUSPENDED',
       'store',
       storeId,
       `Suspended store: ${store.name} (Owner: ${store.owner.name})${reason ? `. Reason: ${reason}` : ''}`,

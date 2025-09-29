@@ -170,10 +170,42 @@ export async function POST(request: NextRequest) {
       productIds
     } = body;
 
+    // Define interfaces for product operations
+    interface ProductInput {
+      name: string;
+      description?: string;
+      category?: string;
+      subCategory?: string;
+      price: number;
+      comparePrice?: number;
+      cost?: number;
+      sku?: string;
+      barcode?: string;
+      stock?: number;
+      trackInventory?: boolean;
+      lowStockAlert?: number;
+      weight?: number;
+      weightUnit?: string;
+      length?: number;
+      width?: number;
+      height?: number;
+      dimensionUnit?: string;
+      slug?: string;
+      metaTitle?: string;
+      metaDescription?: string;
+      visibility?: string;
+      publishDate?: string;
+      featured?: boolean;
+      isActive?: boolean;
+      images?: unknown[];
+      videos?: unknown[];
+      tags?: string[];
+    }
+
     // Handle bulk operations
     if (action === 'bulk_create' && products) {
       const createdProducts = [];
-      for (const productData of products) {
+      for (const productData of products as ProductInput[]) {
         const slug = productData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
         const product = await prisma.product.create({
@@ -194,9 +226,9 @@ export async function POST(request: NextRequest) {
         // Handle images
         if (productData.images?.length > 0) {
           await prisma.productImage.createMany({
-            data: productData.images.map((img: any) => ({
+            data: productData.images.map((img: unknown) => ({
               productId: product.id,
-              ...img
+              ...(img as Record<string, unknown>)
             }))
           });
         }
@@ -204,9 +236,9 @@ export async function POST(request: NextRequest) {
         // Handle videos
         if (productData.videos?.length > 0) {
           await prisma.productVideo.createMany({
-            data: productData.videos.map((vid: any) => ({
+            data: productData.videos.map((vid: unknown) => ({
               productId: product.id,
-              ...vid
+              ...(vid as Record<string, unknown>)
             }))
           });
         }
@@ -231,7 +263,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'bulk_update' && productIds) {
-      const updateData: any = {};
+      const updateData: Record<string, unknown> = {};
       if (category) updateData.category = category;
       if (typeof isActive === 'boolean') updateData.isActive = isActive;
       if (typeof featured === 'boolean') updateData.featured = featured;
@@ -338,9 +370,9 @@ export async function POST(request: NextRequest) {
     // Handle images
     if (images?.length > 0) {
       await prisma.productImage.createMany({
-        data: images.map((img: any) => ({
+        data: images.map((img: unknown) => ({
           productId: product.id,
-          ...img
+          ...(img as Record<string, unknown>)
         }))
       });
     }
@@ -348,9 +380,9 @@ export async function POST(request: NextRequest) {
     // Handle videos
     if (videos?.length > 0) {
       await prisma.productVideo.createMany({
-        data: videos.map((vid: any) => ({
+        data: videos.map((vid: unknown) => ({
           productId: product.id,
-          ...vid
+          ...(vid as Record<string, unknown>)
         }))
       });
     }
@@ -452,9 +484,9 @@ export async function PUT(request: NextRequest) {
       // Create new images
       if (images.length > 0) {
         await prisma.productImage.createMany({
-          data: images.map((img: any) => ({
+          data: images.map((img: unknown) => ({
             productId: id,
-            ...img
+            ...(img as Record<string, unknown>)
           }))
         });
       }
@@ -470,9 +502,9 @@ export async function PUT(request: NextRequest) {
       // Create new videos
       if (videos.length > 0) {
         await prisma.productVideo.createMany({
-          data: videos.map((vid: any) => ({
+          data: videos.map((vid: unknown) => ({
             productId: id,
-            ...vid
+            ...(vid as Record<string, unknown>)
           }))
         });
       }

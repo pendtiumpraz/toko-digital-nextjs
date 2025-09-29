@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 import { logAdminActivity, extendTrialPeriod } from '@/lib/admin';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 /**
  * GET /api/superadmin/trials - Get all trial accounts with filters and pagination
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
     sevenDaysFromNow.setDate(now.getDate() + 7);
 
     // Build where clause
-    const where: any = {
+    const where: Prisma.UserWhereInput = {
       // Only users who have trial periods (not converted to paid)
       OR: [
         { subscription: null },
@@ -394,7 +395,7 @@ async function convertToPaid(
       await prisma.subscription.update({
         where: { id: user.subscription.id },
         data: {
-          plan: plan as any,
+          plan: plan as 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE',
           status: 'ACTIVE',
           price,
           startDate,
@@ -410,7 +411,7 @@ async function convertToPaid(
         data: {
           userId,
           storeId: user.store.id,
-          plan: plan as any,
+          plan: plan as 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE',
           status: 'ACTIVE',
           price,
           trialEndDate: user.trialEndDate,

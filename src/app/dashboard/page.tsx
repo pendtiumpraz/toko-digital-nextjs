@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   ChartBarIcon,
@@ -13,7 +13,6 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 
 interface UserStore {
@@ -73,7 +72,6 @@ interface ErrorState {
 }
 
 export default function Dashboard() {
-  const router = useRouter();
   const [selectedPeriod, setSelectedPeriod] = useState('week');
   const [userStore, setUserStore] = useState<UserStore | null>(null);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
@@ -95,7 +93,7 @@ export default function Dashboard() {
     }
   }, []);
 
-  const fetchDashboardStats = async () => {
+  const fetchDashboardStats = useCallback(async () => {
     try {
       setLoading(prev => ({ ...prev, stats: true }));
       setError(prev => ({ ...prev, stats: null }));
@@ -119,11 +117,11 @@ export default function Dashboard() {
     } finally {
       setLoading(prev => ({ ...prev, stats: false }));
     }
-  };
+  }, [selectedPeriod]);
 
   useEffect(() => {
     fetchDashboardStats();
-  }, [selectedPeriod]);
+  }, [fetchDashboardStats]);
 
   const handlePeriodChange = (period: string) => {
     setSelectedPeriod(period);

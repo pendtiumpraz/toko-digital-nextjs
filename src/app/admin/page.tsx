@@ -6,12 +6,7 @@ import {
   BuildingStorefrontIcon,
   CreditCardIcon,
   ChartBarIcon,
-  CogIcon,
-  ShieldCheckIcon,
-  DocumentTextIcon,
-  BellIcon,
-  CommandLineIcon,
-  ExclamationTriangleIcon
+  CogIcon
 } from '@heroicons/react/24/outline';
 import AdminLayout from '@/components/layout/AdminLayout';
 

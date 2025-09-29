@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { Prisma } from '@prisma/client';
 
 // GET /api/customers/export - Export customers to CSV or JSON
 export async function GET(request: NextRequest) {
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     const includeOrders = searchParams.get('includeOrders') === 'true';
 
     // Build where clause
-    const where: any = {
+    const where: Prisma.CustomerWhereInput = {
       storeId: user.store.id,
     };
 

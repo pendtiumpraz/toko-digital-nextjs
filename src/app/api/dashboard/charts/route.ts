@@ -3,6 +3,47 @@ import { prisma } from '@/lib/prisma';
 import { authenticateUser, createUnauthorizedResponse } from '@/lib/auth-middleware';
 import { PaymentStatus } from '@prisma/client';
 
+// Types for chart data
+interface RevenueDataItem {
+  date: Date;
+  revenue: number;
+  orders: bigint;
+}
+
+interface OrdersDataItem {
+  date: Date;
+  orders: bigint;
+  paid_orders: bigint;
+  pending_orders: bigint;
+}
+
+interface CustomerSegmentItem {
+  segment: string;
+  count: bigint;
+}
+
+interface ChartDatasets {
+  label: string;
+  data: number[];
+  borderColor?: string;
+  backgroundColor?: string | string[];
+  tension?: number;
+  borderWidth?: number;
+}
+
+interface ChartData {
+  labels: string[];
+  datasets: ChartDatasets[];
+}
+
+interface Charts {
+  revenue?: ChartData;
+  orders?: ChartData;
+  topProducts?: ChartData;
+  customerSegments?: ChartData;
+  orderStatus?: ChartData;
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Authenticate user
@@ -49,7 +90,7 @@ export async function GET(request: NextRequest) {
         dateFormat = 'YYYY-MM-DD';
     }
 
-    const charts: any = {};
+    const charts: Charts = {};
 
     // Revenue over time chart
     if (type === 'all' || type === 'revenue') {
@@ -67,7 +108,7 @@ export async function GET(request: NextRequest) {
       `;
 
       charts.revenue = {
-        labels: (revenueData as any[]).map(item => {
+        labels: (revenueData as RevenueDataItem[]).map(item => {
           const date = new Date(item.date);
           if (interval === 'day') {
             return date.toLocaleDateString('id-ID', { month: 'short', day: 'numeric' });
@@ -80,7 +121,7 @@ export async function GET(request: NextRequest) {
         datasets: [
           {
             label: 'Revenue',
-            data: (revenueData as any[]).map(item => item.revenue || 0),
+            data: (revenueData as RevenueDataItem[]).map(item => item.revenue || 0),
             borderColor: 'rgb(34, 197, 94)',
             backgroundColor: 'rgba(34, 197, 94, 0.1)',
             tension: 0.4
@@ -105,7 +146,7 @@ export async function GET(request: NextRequest) {
       `;
 
       charts.orders = {
-        labels: (ordersData as any[]).map(item => {
+        labels: (ordersData as OrdersDataItem[]).map(item => {
           const date = new Date(item.date);
           if (interval === 'day') {
             return date.toLocaleDateString('id-ID', { month: 'short', day: 'numeric' });
@@ -118,14 +159,14 @@ export async function GET(request: NextRequest) {
         datasets: [
           {
             label: 'Total Orders',
-            data: (ordersData as any[]).map(item => Number(item.orders) || 0),
+            data: (ordersData as OrdersDataItem[]).map(item => Number(item.orders) || 0),
             borderColor: 'rgb(59, 130, 246)',
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
             tension: 0.4
           },
           {
             label: 'Paid Orders',
-            data: (ordersData as any[]).map(item => Number(item.paid_orders) || 0),
+            data: (ordersData as OrdersDataItem[]).map(item => Number(item.paid_orders) || 0),
             borderColor: 'rgb(34, 197, 94)',
             backgroundColor: 'rgba(34, 197, 94, 0.1)',
             tension: 0.4
@@ -200,10 +241,11 @@ export async function GET(request: NextRequest) {
       `;
 
       charts.customerSegments = {
-        labels: (customerSegments as any[]).map(item => item.segment),
+        labels: (customerSegments as CustomerSegmentItem[]).map(item => item.segment),
         datasets: [
           {
-            data: (customerSegments as any[]).map(item => Number(item.count)),
+            label: 'Customer Count',
+            data: (customerSegments as CustomerSegmentItem[]).map(item => Number(item.count)),
             backgroundColor: [
               'rgba(59, 130, 246, 0.8)',
               'rgba(34, 197, 94, 0.8)',

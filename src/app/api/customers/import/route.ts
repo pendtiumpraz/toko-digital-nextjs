@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       created: 0,
       updated: 0,
       skipped: 0,
-      errors: [] as Array<{ row: number; error: string; data: any }>,
+      errors: [] as Array<{ row: number; error: string; data: unknown }>,
     };
 
     const validCustomers = [];

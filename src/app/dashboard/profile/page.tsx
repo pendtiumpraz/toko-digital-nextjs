@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 import {
   UserCircleIcon,
   CameraIcon,
@@ -262,9 +263,11 @@ export default function ProfilePage() {
                 <div className="relative inline-block">
                   <div className="w-32 h-32 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
                     {profile.avatar ? (
-                      <img
+                      <Image
                         src={profile.avatar}
                         alt={profile.name}
+                        width={128}
+                        height={128}
                         className="w-full h-full object-cover"
                       />
                     ) : (

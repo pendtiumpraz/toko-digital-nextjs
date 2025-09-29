@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     // Build where clause
-    const where: any = {
+    const where: Prisma.CustomerWhereInput = {
       storeId: user.store.id,
     };
 
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build orderBy clause
-    let orderBy: any = { createdAt: 'desc' };
+    let orderBy: Prisma.CustomerOrderByWithRelationInput = { createdAt: 'desc' };
     switch (sortBy) {
       case 'newest':
         orderBy = { createdAt: 'desc' };

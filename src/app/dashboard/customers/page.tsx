@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   MagnifyingGlassIcon,
-  FunnelIcon,
   UserPlusIcon,
   EyeIcon,
   PencilIcon,
@@ -11,11 +10,7 @@ import {
   EnvelopeIcon,
   PhoneIcon,
   ArrowDownTrayIcon,
-  ArrowUpTrayIcon,
-  ChatBubbleLeftIcon,
-  XMarkIcon,
-  CheckIcon,
-  ExclamationTriangleIcon
+  ArrowUpTrayIcon
 } from '@heroicons/react/24/outline';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { CustomerModal, ImportModal, ConfirmModal } from './components';
@@ -64,29 +59,6 @@ interface OrderItem {
   subtotal: number;
 }
 
-interface CustomerModalProps {
-  customer: Customer | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (customer: Partial<Customer>) => void;
-  onDelete?: (customerId: string) => void;
-  mode: 'view' | 'edit' | 'create';
-}
-
-interface ImportModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onImport: (customers: any[], options: any) => void;
-}
-
-interface ConfirmModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  title: string;
-  message: string;
-  type?: 'danger' | 'warning' | 'info';
-}
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -281,28 +253,7 @@ export default function CustomersPage() {
     }
   };
 
-  const handleWhatsAppContact = (customer: Customer) => {
-    const phone = customer.whatsappNumber || customer.phone;
-    const message = `Hello ${customer.name}, how can we help you today?`;
-    const whatsappUrl = `https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
-  };
 
-  const handleSelectAll = () => {
-    if (selectedCustomers.length === customers.length) {
-      setSelectedCustomers([]);
-    } else {
-      setSelectedCustomers(customers.map(c => c.id));
-    }
-  };
-
-  const handleSelectCustomer = (customerId: string) => {
-    setSelectedCustomers(prev =>
-      prev.includes(customerId)
-        ? prev.filter(id => id !== customerId)
-        : [...prev, customerId]
-    );
-  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {

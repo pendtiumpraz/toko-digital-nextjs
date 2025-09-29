@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import {
@@ -825,9 +826,11 @@ export default function ProductModal({
                           {formData.images?.map((image, index) => (
                             <div key={index} className="relative group">
                               <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                                <img
+                                <Image
                                   src={image.url}
                                   alt={image.alt || `Product image ${index + 1}`}
+                                  width={200}
+                                  height={200}
                                   className="w-full h-full object-cover"
                                   onError={(e) => {
                                     (e.target as HTMLImageElement).src = '/placeholder.jpg';
