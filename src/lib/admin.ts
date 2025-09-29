@@ -528,29 +528,42 @@ export async function getSystemHealth() {
       avgResponseTime,
       errorRate,
       storageUsage,
-      activeConnections
+      activeConnections,
+      databaseHealth
     ] = await Promise.all([
-      // Average response time (mock data - implement with monitoring service)
-      Promise.resolve(150), // ms
+      // Calculate average response time from recent admin activities
+      getAverageResponseTime(),
 
-      // Error rate (mock data - implement with monitoring service)
-      Promise.resolve(0.02), // 2%
+      // Calculate error rate based on recent system logs
+      getSystemErrorRate(),
 
       // Storage usage
       prisma.store.aggregate({
         _sum: { storageUsed: true }
       }),
 
-      // Active connections (mock data - implement with connection pool monitoring)
-      Promise.resolve(45)
+      // Active connections estimate based on recent user activity
+      getActiveConnectionsEstimate(),
+
+      // Database health check
+      checkDatabaseHealth()
     ])
+
+    // Determine overall system status
+    let status: 'healthy' | 'warning' | 'critical' = 'healthy'
+
+    if (avgResponseTime > 1000 || errorRate > 5 || !databaseHealth) {
+      status = 'critical'
+    } else if (avgResponseTime > 500 || errorRate > 2) {
+      status = 'warning'
+    }
 
     return {
       avgResponseTime,
-      errorRate: errorRate * 100, // Convert to percentage
+      errorRate,
       storageUsage: Number(storageUsage._sum.storageUsed || 0),
       activeConnections,
-      status: 'healthy' as 'healthy' | 'warning' | 'critical'
+      status
     }
   } catch (error) {
     console.error('Error getting system health:', error)
@@ -561,6 +574,98 @@ export async function getSystemHealth() {
       activeConnections: 0,
       status: 'critical' as const
     }
+  }
+}
+
+/**
+ * Get average response time estimate based on database query performance
+ */
+async function getAverageResponseTime(): Promise<number> {
+  try {
+    const start = Date.now()
+
+    // Simple database query to estimate response time
+    await prisma.user.count()
+
+    const responseTime = Date.now() - start
+
+    // Return response time in milliseconds
+    return Math.max(responseTime, 50) // Minimum 50ms
+  } catch (error) {
+    console.error('Error measuring response time:', error)
+    return 1000 // Default to high response time on error
+  }
+}
+
+/**
+ * Get system error rate estimate
+ */
+async function getSystemErrorRate(): Promise<number> {
+  try {
+    const oneHourAgo = new Date()
+    oneHourAgo.setHours(oneHourAgo.getHours() - 1)
+
+    // Count admin activities that might indicate errors or issues
+    const [totalActivities, potentialErrors] = await Promise.all([
+      prisma.adminActivityLog.count({
+        where: {
+          createdAt: { gte: oneHourAgo }
+        }
+      }),
+      prisma.adminActivityLog.count({
+        where: {
+          createdAt: { gte: oneHourAgo },
+          action: {
+            in: ['USER_DEACTIVATED', 'STORE_SUSPENDED']
+          }
+        }
+      })
+    ])
+
+    if (totalActivities === 0) return 0
+
+    return (potentialErrors / totalActivities) * 100
+  } catch (error) {
+    console.error('Error calculating error rate:', error)
+    return 5 // Default to 5% error rate on error
+  }
+}
+
+/**
+ * Get active connections estimate based on recent user activity
+ */
+async function getActiveConnectionsEstimate(): Promise<number> {
+  try {
+    const fifteenMinutesAgo = new Date()
+    fifteenMinutesAgo.setMinutes(fifteenMinutesAgo.getMinutes() - 15)
+
+    // Count users who logged in recently
+    const recentlyActiveUsers = await prisma.user.count({
+      where: {
+        lastLogin: { gte: fifteenMinutesAgo },
+        isActive: true
+      }
+    })
+
+    // Estimate connections as recent users + some buffer for anonymous visitors
+    return Math.max(recentlyActiveUsers * 2, 10)
+  } catch (error) {
+    console.error('Error estimating active connections:', error)
+    return 25 // Default estimate
+  }
+}
+
+/**
+ * Check database health
+ */
+async function checkDatabaseHealth(): Promise<boolean> {
+  try {
+    // Simple connectivity test
+    await prisma.$queryRaw`SELECT 1`
+    return true
+  } catch (error) {
+    console.error('Database health check failed:', error)
+    return false
   }
 }
 

@@ -187,11 +187,46 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    // Calculate conversion rate (orders vs total visitors)
-    // For now, we'll use a simple calculation: orders / (orders * 10) to simulate traffic
-    const totalVisits = Math.max(currentOrders * 10, 100); // Simulate traffic data
-    const conversionRate = currentOrders > 0 ? (currentOrders / totalVisits) * 100 : 0;
-    const previousConversionRate = previousOrders > 0 ? (previousOrders / Math.max(previousOrders * 10, 100)) * 100 : 0;
+    // Calculate conversion rate using real analytics data from StoreAnalytics
+    const [currentAnalytics, previousAnalytics] = await Promise.all([
+      // Current period analytics
+      prisma.storeAnalytics.aggregate({
+        where: {
+          storeId: user.storeId,
+          date: { gte: startDate }
+        },
+        _sum: {
+          totalViews: true,
+          uniqueVisitors: true
+        }
+      }),
+
+      // Previous period analytics
+      prisma.storeAnalytics.aggregate({
+        where: {
+          storeId: user.storeId,
+          date: {
+            gte: previousStartDate,
+            lt: previousEndDate
+          }
+        },
+        _sum: {
+          totalViews: true,
+          uniqueVisitors: true
+        }
+      })
+    ]);
+
+    // Use unique visitors for conversion rate calculation, fallback to estimated traffic
+    const currentVisitors = Number(currentAnalytics._sum.uniqueVisitors || 0);
+    const previousVisitors = Number(previousAnalytics._sum.uniqueVisitors || 0);
+
+    // If no analytics data, estimate based on orders (assume 5% conversion rate)
+    const estimatedCurrentVisitors = currentVisitors > 0 ? currentVisitors : Math.max(currentOrders * 20, 100);
+    const estimatedPreviousVisitors = previousVisitors > 0 ? previousVisitors : Math.max(previousOrders * 20, 100);
+
+    const conversionRate = estimatedCurrentVisitors > 0 ? (currentOrders / estimatedCurrentVisitors) * 100 : 0;
+    const previousConversionRate = estimatedPreviousVisitors > 0 ? (previousOrders / estimatedPreviousVisitors) * 100 : 0;
 
     // Calculate percentage changes
     const calculateChange = (current: number, previous: number) => {
@@ -256,6 +291,14 @@ export async function GET(request: NextRequest) {
         change: formatPercentage(conversionChange),
         trend: conversionChange >= 0 ? 'up' : 'down',
         rawValue: conversionRate
+      },
+      totalViews: {
+        value: Number(currentAnalytics._sum.totalViews || 0).toString(),
+        rawValue: Number(currentAnalytics._sum.totalViews || 0)
+      },
+      uniqueVisitors: {
+        value: currentVisitors.toString(),
+        rawValue: currentVisitors
       },
       recentOrders: serializedRecentOrders,
       topProducts: topProductsWithStock,

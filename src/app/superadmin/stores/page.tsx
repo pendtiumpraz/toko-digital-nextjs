@@ -23,10 +23,12 @@ import {
   CloudIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  ArrowTopRightOnSquareIcon
+  ArrowTopRightOnSquareIcon,
+  ComputerDesktopIcon
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import StorePreview from '@/components/admin/StorePreview';
 
 interface Store {
   id: string;
@@ -110,6 +112,8 @@ export default function SuperAdminStoresPage() {
     storageUsage: '',
     owner: ''
   });
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewSubdomain, setPreviewSubdomain] = useState<string>('');
 
   useEffect(() => {
     fetchStores();
@@ -247,6 +251,16 @@ export default function SuperAdminStoresPage() {
   const closeModal = () => {
     setShowModal(false);
     setSelectedStore(null);
+  };
+
+  const openPreview = (subdomain: string) => {
+    setPreviewSubdomain(subdomain);
+    setShowPreview(true);
+  };
+
+  const closePreview = () => {
+    setShowPreview(false);
+    setPreviewSubdomain('');
   };
 
   const handleConfirmAction = (type: string, message: string, onConfirm: () => void) => {
@@ -605,6 +619,13 @@ export default function SuperAdminStoresPage() {
                                 <PencilIcon className="h-5 w-5" />
                               </button>
                               <button
+                                onClick={() => openPreview(store.subdomain)}
+                                className="text-indigo-600 hover:text-indigo-800"
+                                title="Preview Store"
+                              >
+                                <ComputerDesktopIcon className="h-5 w-5" />
+                              </button>
+                              <button
                                 onClick={() => window.open(`https://${store.subdomain}.example.com`, '_blank')}
                                 className="text-gray-600 hover:text-gray-800"
                                 title="Visit Store"
@@ -907,6 +928,15 @@ export default function SuperAdminStoresPage() {
                       {/* Action Buttons */}
                       <div className="flex justify-end space-x-3 pt-6 border-t">
                         <button
+                          onClick={() => {
+                            openPreview(selectedStore.subdomain);
+                            closeModal();
+                          }}
+                          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
+                        >
+                          Preview Store
+                        </button>
+                        <button
                           onClick={() => window.open(`https://${selectedStore.subdomain}.example.com`, '_blank')}
                           className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
                         >
@@ -1042,6 +1072,13 @@ export default function SuperAdminStoresPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Store Preview Modal */}
+        <StorePreview
+          subdomain={previewSubdomain}
+          isOpen={showPreview}
+          onClose={closePreview}
+        />
       </div>
     </AdminLayout>
   );

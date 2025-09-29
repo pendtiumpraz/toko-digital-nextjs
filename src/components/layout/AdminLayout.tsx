@@ -16,7 +16,9 @@ import {
   Bars3Icon,
   XMarkIcon,
   DocumentTextIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  BanknotesIcon,
+  PresentationChartLineIcon
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -72,6 +74,8 @@ export default function AdminLayout({ children, role }: AdminLayoutProps) {
     { name: 'Users', href: '/superadmin/users', icon: UsersIcon },
     { name: 'Stores', href: '/superadmin/stores', icon: BuildingStorefrontIcon },
     { name: 'Trials', href: '/superadmin/trials', icon: ClockIcon },
+    { name: 'Finance', href: '/superadmin/finance', icon: BanknotesIcon },
+    { name: 'Analytics', href: '/superadmin/analytics', icon: PresentationChartLineIcon },
     { name: 'Activities', href: '/superadmin/activities', icon: DocumentTextIcon },
     { name: 'Payments', href: '/superadmin/payments', icon: CreditCardIcon },
     { name: 'Notifications', href: '/superadmin/notifications', icon: BellIcon },
