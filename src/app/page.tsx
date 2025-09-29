@@ -36,7 +36,7 @@ const fadeInUp = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, ease: "easeOut" }
+    transition: { duration: 0.6 }
   }
 };
 
@@ -555,7 +555,7 @@ export default function Home() {
                   ))}
                 </div>
                 <blockquote className="flex-1">
-                  <p className="text-gray-700">"{testimonial.content}"</p>
+                  <p className="text-gray-700">&ldquo;{testimonial.content}&rdquo;</p>
                 </blockquote>
                 <div className="mt-6 flex items-center gap-4">
                   <img

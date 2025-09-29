@@ -1,5 +1,5 @@
-import { prisma, serializeBigInt } from './prisma'
-import { TransactionType, TransactionCategory, AnalyticsPeriod } from '@prisma/client'
+import { prisma } from './prisma'
+import { TransactionType, TransactionCategory } from '@prisma/client'
 
 interface TransactionWhere {
   storeId: string

@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ className, onDrag, onDragEnd, onDragStart, onAnimationStart, onAnimationEnd, onAnimationIteration, ...props }, ref) => (
+  ({ className, children, ...props }, ref) => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -15,8 +15,9 @@ const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
         'rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-300',
         className
       )}
-      {...props}
-    />
+    >
+      {children}
+    </motion.div>
   )
 );
 Card.displayName = 'Card';

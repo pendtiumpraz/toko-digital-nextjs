@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { PlayIcon } from '@heroicons/react/24/solid';
 import { motion } from 'framer-motion';
 import { getYouTubeVideoId, getVimeoVideoId } from '@/lib/utils';
@@ -95,13 +96,13 @@ export default function VideoEmbed({
           whileHover={{ scale: 1.02 }}
           transition={{ duration: 0.2 }}
         >
-          <img
+          <Image
             src={getThumbnailUrl()}
             alt="Video thumbnail"
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              const img = e.target as HTMLImageElement;
-              img.src = '/placeholder-video.jpg';
+            fill
+            className="object-cover"
+            onError={() => {
+              // Image error handled by Next.js Image component
             }}
           />
           <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors flex items-center justify-center">

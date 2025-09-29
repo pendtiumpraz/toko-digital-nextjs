@@ -11,20 +11,6 @@ interface AdminActivityLogWhere {
   }
 }
 
-interface UserFilterWhere {
-  role?: Role
-  isActive?: boolean
-  OR?: Array<{
-    name?: { contains: string; mode: 'insensitive' }
-    email?: { contains: string; mode: 'insensitive' }
-  }>
-  store?: { isNot: null } | null
-  subscription?: {
-    status?: string | { not: string }
-  }
-  trialEndDate?: { gt: Date } | { lt: Date } | { gt: Date; lt: Date }
-}
-
 export interface AdminUser {
   id: string
   email: string
